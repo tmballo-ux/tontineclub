@@ -1,0 +1,373 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTontineStore } from '@/src/store/tontineStore';
+import { colors } from '@/src/theme/colors';
+import { Input } from '@/src/components/Input';
+import { Button } from '@/src/components/Button';
+import { Card } from '@/src/components/Card';
+
+export default function CreateTontineScreen() {
+  const router = useRouter();
+  const { createTontine } = useTontineStore();
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
+  const [maxMembers, setMaxMembers] = useState('');
+  const [startDate, setStartDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = 'Nom requis';
+    if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Montant invalide';
+    if (!maxMembers || parseInt(maxMembers) < 2) newErrors.maxMembers = 'Minimum 2 membres';
+    if (startDate < new Date()) newErrors.startDate = 'Date future requise';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCreate = async () => {
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      await createTontine({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        contribution_amount: parseFloat(amount),
+        frequency,
+        max_members: parseInt(maxMembers),
+        start_date: startDate.toISOString(),
+      });
+      Alert.alert('Succès', 'Tontine créée avec succès!', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nouvelle Tontine</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Card style={styles.formCard}>
+            <Input
+              label="Nom de la tontine *"
+              value={name}
+              onChangeText={setName}
+              placeholder="Ex: Tontine Famille"
+              icon="wallet-outline"
+              error={errors.name}
+            />
+
+            <Input
+              label="Description (optionnel)"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Décrivez l'objectif de cette tontine"
+              icon="document-text-outline"
+              multiline
+              numberOfLines={3}
+            />
+
+            <Input
+              label="Montant de la cotisation (XOF) *"
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Ex: 50000"
+              keyboardType="numeric"
+              icon="cash-outline"
+              error={errors.amount}
+            />
+
+            {/* Frequency Selection */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Fréquence *</Text>
+              <View style={styles.frequencyOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.frequencyOption,
+                    frequency === 'weekly' && styles.frequencyOptionActive,
+                  ]}
+                  onPress={() => setFrequency('weekly')}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={frequency === 'weekly' ? colors.white : colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.frequencyText,
+                      frequency === 'weekly' && styles.frequencyTextActive,
+                    ]}
+                  >
+                    Hebdomadaire
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.frequencyOption,
+                    frequency === 'monthly' && styles.frequencyOptionActive,
+                  ]}
+                  onPress={() => setFrequency('monthly')}
+                >
+                  <Ionicons
+                    name="calendar"
+                    size={20}
+                    color={frequency === 'monthly' ? colors.white : colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.frequencyText,
+                      frequency === 'monthly' && styles.frequencyTextActive,
+                    ]}
+                  >
+                    Mensuel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Input
+              label="Nombre de membres *"
+              value={maxMembers}
+              onChangeText={setMaxMembers}
+              placeholder="Ex: 10"
+              keyboardType="numeric"
+              icon="people-outline"
+              error={errors.maxMembers}
+            />
+
+            {/* Date Picker */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Date de début *</Text>
+              <TouchableOpacity
+                style={[styles.dateButton, errors.startDate && styles.dateButtonError]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.dateText}>{formatDate(startDate)}</Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              {errors.startDate && <Text style={styles.error}>{errors.startDate}</Text>}
+            </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                minimumDate={new Date()}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setStartDate(date);
+                }}
+              />
+            )}
+          </Card>
+
+          {/* Summary Card */}
+          <Card style={styles.summaryCard}>
+            <Text style={styles.summaryTitle}>Résumé</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Cotisation par cycle</Text>
+              <Text style={styles.summaryValue}>
+                {amount ? `${parseInt(amount).toLocaleString('fr-FR')} XOF` : '-'}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Cagnotte totale</Text>
+              <Text style={styles.summaryValue}>
+                {amount && maxMembers
+                  ? `${(parseInt(amount) * parseInt(maxMembers)).toLocaleString('fr-FR')} XOF`
+                  : '-'}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Durée totale</Text>
+              <Text style={styles.summaryValue}>
+                {maxMembers
+                  ? `${parseInt(maxMembers)} ${frequency === 'weekly' ? 'semaines' : 'mois'}`
+                  : '-'}
+              </Text>
+            </View>
+          </Card>
+
+          <Button
+            title="Créer la tontine"
+            onPress={handleCreate}
+            loading={loading}
+            size="lg"
+            style={styles.submitButton}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  placeholder: {
+    width: 44,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  formCard: {
+    marginBottom: 16,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  frequencyOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  frequencyOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    gap: 8,
+  },
+  frequencyOptionActive: {
+    backgroundColor: colors.primary,
+  },
+  frequencyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  frequencyTextActive: {
+    color: colors.white,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  dateButtonError: {
+    borderColor: colors.error,
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+  },
+  error: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+  },
+  summaryCard: {
+    backgroundColor: colors.primary + '10',
+    marginBottom: 24,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  submitButton: {
+    marginBottom: 16,
+  },
+});
