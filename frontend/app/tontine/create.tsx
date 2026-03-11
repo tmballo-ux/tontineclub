@@ -12,12 +12,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTontineStore, Currency } from '@/src/store/tontineStore';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
+import { DatePicker } from '@/src/components/DatePicker';
 
 const CURRENCIES: { value: Currency; label: string; symbol: string }[] = [
   { value: 'CAD', label: '$ CAD', symbol: '$' },
@@ -31,7 +31,7 @@ const getCurrencySymbol = (currency: Currency) => {
   return curr?.symbol || currency;
 };
 
-const formatCurrency = (amount: number, currency: Currency) => {
+const formatCurrencyAmount = (amount: number, currency: Currency) => {
   const symbol = getCurrencySymbol(currency);
   const formatted = amount.toLocaleString('fr-FR');
   if (currency === 'XOF') {
@@ -50,8 +50,11 @@ export default function CreateTontineScreen() {
   const [currency, setCurrency] = useState<Currency>('XOF');
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
   const [maxMembers, setMaxMembers] = useState('');
-  const [startDate, setStartDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -60,7 +63,11 @@ export default function CreateTontineScreen() {
     if (!name.trim()) newErrors.name = 'Nom requis';
     if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Montant invalide';
     if (!maxMembers || parseInt(maxMembers) < 2) newErrors.maxMembers = 'Minimum 2 membres';
-    if (startDate < new Date()) newErrors.startDate = 'Date future requise';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (startDate < today) newErrors.startDate = 'Date future requise';
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,14 +94,6 @@ export default function CreateTontineScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
   };
 
   const currencySymbol = getCurrencySymbol(currency);
@@ -234,30 +233,13 @@ export default function CreateTontineScreen() {
             />
 
             {/* Date Picker */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Date de début *</Text>
-              <TouchableOpacity
-                style={[styles.dateButton, errors.startDate && styles.dateButtonError]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-                <Text style={styles.dateText}>{formatDate(startDate)}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-              {errors.startDate && <Text style={styles.error}>{errors.startDate}</Text>}
-            </View>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                minimumDate={new Date()}
-                onChange={(event, date) => {
-                  setShowDatePicker(false);
-                  if (date) setStartDate(date);
-                }}
-              />
-            )}
+            <DatePicker
+              label="Date de début *"
+              value={startDate}
+              onChange={setStartDate}
+              minimumDate={new Date()}
+              error={errors.startDate}
+            />
           </Card>
 
           {/* Summary Card */}
@@ -266,14 +248,14 @@ export default function CreateTontineScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Cotisation par cycle</Text>
               <Text style={styles.summaryValue}>
-                {amount ? formatCurrency(parseInt(amount), currency) : '-'}
+                {amount ? formatCurrencyAmount(parseInt(amount), currency) : '-'}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Cagnotte totale</Text>
               <Text style={styles.summaryValue}>
                 {amount && maxMembers
-                  ? formatCurrency(parseInt(amount) * parseInt(maxMembers), currency)
+                  ? formatCurrencyAmount(parseInt(amount) * parseInt(maxMembers), currency)
                   : '-'}
               </Text>
             </View>
@@ -393,30 +375,6 @@ const styles = StyleSheet.create({
   },
   frequencyTextActive: {
     color: colors.white,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  dateButtonError: {
-    borderColor: colors.error,
-  },
-  dateText: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-  },
-  error: {
-    fontSize: 12,
-    color: colors.error,
-    marginTop: 4,
   },
   summaryCard: {
     backgroundColor: colors.primary + '10',
