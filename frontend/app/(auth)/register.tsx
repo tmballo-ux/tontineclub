@@ -28,6 +28,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState('');
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -46,11 +47,13 @@ export default function RegisterScreen() {
     if (!validate()) return;
 
     setLoading(true);
+    setGeneralError('');
     try {
       await register(email, password, fullName, phone);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      const errorMessage = error.message || "Erreur d'inscription";
+      setGeneralError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -81,6 +84,13 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
+            {generalError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorBannerText}>{generalError}</Text>
+              </View>
+            ) : null}
+
             <Input
               label="Nom complet"
               value={fullName}
@@ -187,6 +197,23 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error + '15',
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '500',
   },
   submitButton: {
     marginTop: 8,

@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [generalError, setGeneralError] = useState('');
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -39,11 +40,13 @@ export default function LoginScreen() {
     if (!validate()) return;
 
     setLoading(true);
+    setGeneralError('');
     try {
       await login(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      const errorMessage = error.message || 'Erreur de connexion';
+      setGeneralError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -74,6 +77,13 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
+            {generalError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+                <Text style={styles.errorBannerText}>{generalError}</Text>
+              </View>
+            ) : null}
+
             <Input
               label="Email"
               value={email}
@@ -157,6 +167,23 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error + '15',
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
