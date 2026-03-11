@@ -9,10 +9,13 @@ const getAuthHeader = () => {
   return { Authorization: `Bearer ${token}` };
 };
 
+export type Currency = 'CAD' | 'USD' | 'XOF' | 'EUR';
+
 export interface Tontine {
   id: string;
   name: string;
   contribution_amount: number;
+  currency: Currency;
   frequency: 'weekly' | 'monthly';
   max_members: number;
   current_members: number;

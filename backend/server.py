@@ -57,6 +57,12 @@ class TontineFrequency(str, Enum):
     WEEKLY = "weekly"
     MONTHLY = "monthly"
 
+class Currency(str, Enum):
+    CAD = "CAD"  # Dollar canadien
+    USD = "USD"  # Dollar américain
+    XOF = "XOF"  # FCFA (Franc CFA Ouest-Africain)
+    EUR = "EUR"  # Euro
+
 class TontineStatus(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active"
@@ -120,6 +126,7 @@ class TokenResponse(BaseModel):
 class TontineCreate(BaseModel):
     name: str
     contribution_amount: float
+    currency: Currency = Currency.XOF
     frequency: TontineFrequency
     max_members: int
     start_date: datetime
@@ -134,6 +141,7 @@ class Tontine(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     contribution_amount: float
+    currency: Currency = Currency.XOF
     frequency: TontineFrequency
     max_members: int
     current_members: int = 1
@@ -359,6 +367,7 @@ async def create_tontine(tontine_data: TontineCreate, current_user: dict = Depen
     tontine = Tontine(
         name=tontine_data.name,
         contribution_amount=tontine_data.contribution_amount,
+        currency=tontine_data.currency,
         frequency=tontine_data.frequency,
         max_members=tontine_data.max_members,
         start_date=tontine_data.start_date,

@@ -14,6 +14,7 @@ import { useTontineStore, Tontine } from '@/src/store/tontineStore';
 import { colors, shadows } from '@/src/theme/colors';
 import { Card } from '@/src/components/Card';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import { formatCurrency } from '@/src/utils/currency';
 
 export default function TontinesScreen() {
   const router = useRouter();
@@ -26,14 +27,6 @@ export default function TontinesScreen() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -64,7 +57,7 @@ export default function TontinesScreen() {
         <View style={styles.detailRow}>
           <View style={styles.detailItem}>
             <Ionicons name="cash-outline" size={18} color={colors.primary} />
-            <Text style={styles.detailText}>{formatCurrency(item.contribution_amount)}</Text>
+            <Text style={styles.detailText}>{formatCurrency(item.contribution_amount, item.currency || 'XOF')}</Text>
           </View>
           <View style={styles.detailItem}>
             <Ionicons name="time-outline" size={18} color={colors.primary} />

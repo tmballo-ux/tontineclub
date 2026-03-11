@@ -13,11 +13,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useTontineStore } from '@/src/store/tontineStore';
+import { useTontineStore, Currency } from '@/src/store/tontineStore';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
+
+const CURRENCIES: { value: Currency; label: string; symbol: string }[] = [
+  { value: 'CAD', label: '$ CAD', symbol: '$' },
+  { value: 'USD', label: '$ USD', symbol: '$' },
+  { value: 'XOF', label: 'FCFA', symbol: 'FCFA' },
+  { value: 'EUR', label: '€ EUR', symbol: '€' },
+];
+
+const getCurrencySymbol = (currency: Currency) => {
+  const curr = CURRENCIES.find(c => c.value === currency);
+  return curr?.symbol || currency;
+};
+
+const formatCurrency = (amount: number, currency: Currency) => {
+  const symbol = getCurrencySymbol(currency);
+  const formatted = amount.toLocaleString('fr-FR');
+  if (currency === 'XOF') {
+    return `${formatted} ${symbol}`;
+  }
+  return `${symbol} ${formatted}`;
+};
 
 export default function CreateTontineScreen() {
   const router = useRouter();
@@ -26,6 +47,7 @@ export default function CreateTontineScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState<Currency>('XOF');
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
   const [maxMembers, setMaxMembers] = useState('');
   const [startDate, setStartDate] = useState(new Date());
@@ -52,6 +74,7 @@ export default function CreateTontineScreen() {
         name: name.trim(),
         description: description.trim() || undefined,
         contribution_amount: parseFloat(amount),
+        currency,
         frequency,
         max_members: parseInt(maxMembers),
         start_date: startDate.toISOString(),
@@ -73,6 +96,8 @@ export default function CreateTontineScreen() {
       year: 'numeric',
     });
   };
+
+  const currencySymbol = getCurrencySymbol(currency);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -113,8 +138,34 @@ export default function CreateTontineScreen() {
               numberOfLines={3}
             />
 
+            {/* Currency Selection */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Devise *</Text>
+              <View style={styles.currencyOptions}>
+                {CURRENCIES.map((curr) => (
+                  <TouchableOpacity
+                    key={curr.value}
+                    style={[
+                      styles.currencyOption,
+                      currency === curr.value && styles.currencyOptionActive,
+                    ]}
+                    onPress={() => setCurrency(curr.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.currencyText,
+                        currency === curr.value && styles.currencyTextActive,
+                      ]}
+                    >
+                      {curr.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             <Input
-              label="Montant de la cotisation (XOF) *"
+              label={`Montant de la cotisation (${currencySymbol}) *`}
               value={amount}
               onChangeText={setAmount}
               placeholder="Ex: 50000"
@@ -215,14 +266,14 @@ export default function CreateTontineScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Cotisation par cycle</Text>
               <Text style={styles.summaryValue}>
-                {amount ? `${parseInt(amount).toLocaleString('fr-FR')} XOF` : '-'}
+                {amount ? formatCurrency(parseInt(amount), currency) : '-'}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Cagnotte totale</Text>
               <Text style={styles.summaryValue}>
                 {amount && maxMembers
-                  ? `${(parseInt(amount) * parseInt(maxMembers)).toLocaleString('fr-FR')} XOF`
+                  ? formatCurrency(parseInt(amount) * parseInt(maxMembers), currency)
                   : '-'}
               </Text>
             </View>
@@ -292,6 +343,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 8,
+  },
+  currencyOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  currencyOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  currencyOptionActive: {
+    backgroundColor: colors.primary,
+  },
+  currencyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  currencyTextActive: {
+    color: colors.white,
   },
   frequencyOptions: {
     flexDirection: 'row',
