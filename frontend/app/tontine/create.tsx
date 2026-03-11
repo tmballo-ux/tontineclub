@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Currency } from '@/src/store/tontineStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -43,6 +44,14 @@ const formatCurrencyAmount = (amount: number, currency: Currency) => {
 export default function CreateTontineScreen() {
   const router = useRouter();
   const { createTontine } = useTontineStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  // Rediriger vers login si non connecté
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      router.replace('/(auth)/login');
+    }
+  }, [isAuthenticated, token]);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -85,11 +94,15 @@ export default function CreateTontineScreen() {
         max_members: parseInt(maxMembers),
         start_date: startDate.toISOString(),
       });
-      Alert.alert('Succès', 'Tontine créée avec succès!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      // Navigation directe vers les tontines après création réussie
+      router.replace('/(tabs)/tontines');
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      // Utiliser window.alert pour le web comme fallback
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('Erreur: ' + error.message);
+      } else {
+        Alert.alert('Erreur', error.message);
+      }
     } finally {
       setLoading(false);
     }
