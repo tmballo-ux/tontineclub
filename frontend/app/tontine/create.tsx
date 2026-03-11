@@ -51,9 +51,8 @@ export default function CreateTontineScreen() {
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
   const [maxMembers, setMaxMembers] = useState('');
   const [startDate, setStartDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
+    // Par défaut: 1er janvier de l'année en cours
+    return new Date(new Date().getFullYear(), 0, 1);
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,9 +63,9 @@ export default function CreateTontineScreen() {
     if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Montant invalide';
     if (!maxMembers || parseInt(maxMembers) < 2) newErrors.maxMembers = 'Minimum 2 membres';
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (startDate < today) newErrors.startDate = 'Date future requise';
+    // Permettre les dates à partir du 1er janvier de l'année en cours
+    const minDate = new Date(new Date().getFullYear(), 0, 1);
+    if (startDate < minDate) newErrors.startDate = 'Date invalide';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -237,7 +236,7 @@ export default function CreateTontineScreen() {
               label="Date de début *"
               value={startDate}
               onChange={setStartDate}
-              minimumDate={new Date()}
+              minimumDate={new Date(new Date().getFullYear(), 0, 1)} // 1er janvier de l'année en cours
               error={errors.startDate}
             />
           </Card>
