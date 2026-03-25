@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { useTontineStore } from '@/src/store/tontineStore';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import PaywallView from '@/src/components/PaywallView';
 
 export default function TabsLayout() {
   const { unreadCount } = useTontineStore();
   const { isAuthenticated } = useAuthStore();
   const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
-  const router = useRouter();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -19,18 +19,25 @@ export default function TabsLayout() {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (isAuthenticated && isChecked && !isLoading && !hasAccess) {
-      router.replace('/subscription/paywall');
-    }
-  }, [isAuthenticated, isChecked, isLoading, hasAccess]);
-
-  if (isAuthenticated && isLoading) {
+  // Show loading while checking subscription
+  if (isAuthenticated && !isChecked) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Vérification de l'abonnement...</Text>
       </View>
+    );
+  }
+
+  // Show paywall if no access
+  if (isAuthenticated && isChecked && !hasAccess) {
+    return (
+      <PaywallView
+        onTrialActivated={() => {
+          // Re-fetch subscription status - this will re-render with hasAccess = true
+          fetchStatus();
+        }}
+      />
     );
   }
 
