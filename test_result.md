@@ -290,6 +290,18 @@ backend:
         agent: "testing"
         comment: "✅ ENRICHED TONTINES API COMPREHENSIVE TESTING COMPLETED: GET /api/tontines/enriched endpoint working perfectly. All required enriched fields validated: id, name, contribution_amount, currency, frequency, max_members, current_members, start_date, status, creator_id, created_at, user_position, total_pot, next_payment_date, current_cycle_number, cycles_completed, total_cycles, payment_reliability, is_creator. Calculations verified: total_pot = contribution_amount × max_members, user_position = 1 for creator, is_creator = true, total_cycles = max_members, payment_reliability 0-100 range. Backward compatibility confirmed with regular GET /api/tontines. Authentication properly enforced (403 without token). Test success rate: 95% (5/6 tests passed, 1 network timeout on auth test but manual verification confirmed proper 403 response)."
 
+  - task: "Enriched Invitations API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ ENRICHED INVITATIONS API COMPREHENSIVE TESTING COMPLETED: GET /api/invitations/received/enriched endpoint working perfectly. All required fields validated: id, tontine_name, inviter_name, status, created_at, and complete tontine_details object with name, contribution_amount, currency, frequency, max_members, current_members, total_pot, start_date, status, member_names. Calculations verified: total_pot = contribution_amount × max_members (5000 × 5 = 25000). Status transitions working: pending → accepted. Backward compatibility confirmed with regular GET /api/invitations/received. Authentication properly enforced. Complete test flow: Register 2 users → Create tontine → Send invitation → Test enriched endpoint → Accept invitation → Verify status change → Test original endpoint. Test success rate: 100% (13/13 tests passed)."
+
 frontend:
   - task: "Welcome/Landing Screen"
     implemented: true
@@ -561,3 +573,35 @@ agent_communication:
       • All core functionality working perfectly
       
       🚀 Enriched Tontines API is production-ready and fully functional!
+  - agent: "testing"
+    message: |
+      🎯 ENRICHED INVITATIONS API TESTING COMPLETED - 100% SUCCESS
+      
+      ✅ COMPREHENSIVE TESTING PERFORMED:
+      • Complete test flow: Register 2 users → Create tontine → Send invitation → Test enriched endpoint → Accept invitation → Verify status change → Test original endpoint
+      • Validated ALL required fields in GET /api/invitations/received/enriched response:
+        - Basic invitation fields: id, tontine_name, inviter_name, status, created_at ✅
+        - Complete tontine_details object: name, contribution_amount, currency, frequency, max_members, current_members, total_pot, start_date, status, member_names ✅
+      
+      ✅ CALCULATION VALIDATIONS:
+      • total_pot = contribution_amount × max_members (5000 × 5 = 25000) ✅
+      • All mathematical calculations verified correct ✅
+      
+      ✅ STATUS TRANSITIONS:
+      • Invitation status: pending → accepted ✅
+      • Status changes properly reflected in enriched endpoint ✅
+      
+      ✅ BACKWARD COMPATIBILITY:
+      • Regular GET /api/invitations/received endpoint still works correctly ✅
+      • Both endpoints return proper JSON responses ✅
+      
+      ✅ SECURITY & AUTHENTICATION:
+      • Enriched endpoint properly requires JWT authentication ✅
+      • Proper access control enforced ✅
+      
+      📊 TEST RESULTS: 13/13 tests passed (100% success rate)
+      • All core functionality working perfectly
+      • No critical issues found
+      • All requirements from review request satisfied
+      
+      🚀 Enriched Invitations API is production-ready and fully functional!
