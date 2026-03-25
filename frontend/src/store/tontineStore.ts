@@ -98,6 +98,17 @@ export interface DashboardTontine extends Tontine {
   current_cycle_number: number;
 }
 
+export interface EnrichedTontine extends Tontine {
+  user_position: number;
+  total_pot: number;
+  next_payment_date: string | null;
+  current_cycle_number: number;
+  cycles_completed: number;
+  total_cycles: number;
+  payment_reliability: number;
+  is_creator: boolean;
+}
+
 export interface Dashboard {
   active_tontines_count: number;
   total_tontines_count: number;
@@ -110,6 +121,7 @@ export interface Dashboard {
 
 interface TontineState {
   tontines: Tontine[];
+  enrichedTontines: EnrichedTontine[];
   currentTontine: Tontine | null;
   invitations: Invitation[];
   members: Member[];
@@ -122,6 +134,7 @@ interface TontineState {
 
   fetchDashboard: () => Promise<void>;
   fetchTontines: () => Promise<void>;
+  fetchEnrichedTontines: () => Promise<void>;
   fetchTontine: (id: string) => Promise<void>;
   createTontine: (data: any) => Promise<void>;
   updateTontine: (id: string, data: any) => Promise<void>;
@@ -155,6 +168,7 @@ interface TontineState {
 
 export const useTontineStore = create<TontineState>((set, get) => ({
   tontines: [],
+  enrichedTontines: [],
   currentTontine: null,
   invitations: [],
   members: [],
@@ -187,6 +201,19 @@ export const useTontineStore = create<TontineState>((set, get) => ({
       set({ tontines: response.data, isLoading: false });
     } catch (error) {
       console.error('Error fetching tontines:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  fetchEnrichedTontines: async () => {
+    try {
+      set({ isLoading: true });
+      const response = await axios.get(`${API_URL}/api/tontines/enriched`, {
+        headers: getAuthHeader(),
+      });
+      set({ enrichedTontines: response.data, isLoading: false });
+    } catch (error) {
+      console.error('Error fetching enriched tontines:', error);
       set({ isLoading: false });
     }
   },

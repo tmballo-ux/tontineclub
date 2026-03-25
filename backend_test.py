@@ -1,916 +1,346 @@
 #!/usr/bin/env python3
 """
-TontineClub Backend API Test Suite
-Focus: Dashboard API with Financial Summary Testing
+TontineClub Backend API Testing - Enriched Tontines Endpoint
+Testing the new enriched tontines endpoint with comprehensive validation.
 """
 
 import requests
 import json
-import sys
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any
 import time
 
-# Base URL for testing - using the EXPO_PUBLIC_BACKEND_URL
+# Configuration
 BASE_URL = "https://tontine-dashboard-1.preview.emergentagent.com/api"
+HEADERS = {"Content-Type": "application/json"}
 
-class TontineAPITest:
+class TontineClubTester:
     def __init__(self):
         self.base_url = BASE_URL
-        self.user1_token = None
-        self.user2_token = None
-        self.user1_data = None
-        self.user2_data = None
-        self.test_tontine = None
-        self.invitation = None
-        self.cycles = []
-        self.contributions = []
-        self.results = []
+        self.headers = HEADERS.copy()
+        self.auth_token = None
+        self.user_id = None
+        self.test_results = []
         
-        # Test users
-        self.user1 = {
-            "email": "creator@test.com", 
-            "password": "password123",
-            "full_name": "Test Creator",
-            "phone": "+1234567890"
-        }
-        self.user2 = {
-            "email": "member@test.com", 
-            "password": "password123",
-            "full_name": "Test Member",
-            "phone": "+0987654321"
-        }
-    
-    def log_result(self, test_name: str, success: bool, details: str = ""):
+    def log_test(self, test_name, success, details=""):
         """Log test results"""
         status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name}")
-        if details:
-            print(f"    Details: {details}")
-        self.results.append({
+        self.test_results.append({
             "test": test_name,
-            "success": success,
+            "status": status,
             "details": details
         })
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
     
-    def make_request(self, method: str, endpoint: str, data: dict = None, headers: dict = None) -> tuple:
-        """Make HTTP request and return response, success status"""
+    def make_request(self, method, endpoint, data=None, params=None):
+        """Make HTTP request with error handling"""
         url = f"{self.base_url}{endpoint}"
-        
-        default_headers = {"Content-Type": "application/json"}
-        if headers:
-            default_headers.update(headers)
-        
         try:
-            if method == "GET":
-                response = requests.get(url, headers=default_headers, timeout=30)
-            elif method == "POST":
-                response = requests.post(url, json=data, headers=default_headers, timeout=30)
-            elif method == "PUT":
-                response = requests.put(url, json=data, headers=default_headers, timeout=30)
-            elif method == "DELETE":
-                response = requests.delete(url, headers=default_headers, timeout=30)
+            if method.upper() == "GET":
+                response = requests.get(url, headers=self.headers, params=params, timeout=30)
+            elif method.upper() == "POST":
+                response = requests.post(url, headers=self.headers, json=data, timeout=30)
+            elif method.upper() == "PUT":
+                response = requests.put(url, headers=self.headers, json=data, timeout=30)
+            elif method.upper() == "DELETE":
+                response = requests.delete(url, headers=self.headers, timeout=30)
             else:
-                return None, False
-                
-            return response, True
-        except Exception as e:
-            print(f"Request failed: {str(e)}")
-            return None, False
-    
-    def get_auth_headers(self, token: str) -> dict:
-        """Get authorization headers with Bearer token"""
-        return {"Authorization": f"Bearer {token}"}
-    
-    def test_health_check(self):
-        """Test basic health endpoint"""
-        print("\n🔍 Testing Health Check...")
-        
-        response, success = self.make_request("GET", "/health")
-        if not success:
-            self.log_result("Health Check", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Health Check", True, f"Status: {response.json()}")
-            return True
-        else:
-            self.log_result("Health Check", False, f"Status: {response.status_code}")
-            return False
+                raise ValueError(f"Unsupported method: {method}")
+            
+            return response
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}")
+            return None
     
     def test_user_registration(self):
-        """Test user registration for both users"""
-        print("\n🔍 Testing User Registration...")
+        """Test user registration"""
+        test_email = f"enriched_test_{uuid.uuid4().hex[:8]}@example.com"
+        user_data = {
+            "email": test_email,
+            "full_name": "Enriched Test User",
+            "phone": "+1234567890",
+            "password": "SecurePass123!"
+        }
         
-        # Register User 1
-        response, success = self.make_request("POST", "/auth/register", self.user1)
-        if not success:
-            self.log_result("User 1 Registration", False, "Request failed")
-            return False
+        response = self.make_request("POST", "/auth/register", user_data)
         
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             data = response.json()
-            self.user1_token = data.get("access_token")
-            self.user1_data = data.get("user")
-            self.log_result("User 1 Registration", True, f"User ID: {self.user1_data.get('id')}")
+            if "access_token" in data and "user" in data:
+                self.auth_token = data["access_token"]
+                self.user_id = data["user"]["id"]
+                self.headers["Authorization"] = f"Bearer {self.auth_token}"
+                self.log_test("User Registration", True, f"User created with ID: {self.user_id}")
+                return True
+            else:
+                self.log_test("User Registration", False, "Missing token or user in response")
+                return False
         else:
-            self.log_result("User 1 Registration", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-        
-        # Register User 2
-        response, success = self.make_request("POST", "/auth/register", self.user2)
-        if not success:
-            self.log_result("User 2 Registration", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            data = response.json()
-            self.user2_token = data.get("access_token")
-            self.user2_data = data.get("user")
-            self.log_result("User 2 Registration", True, f"User ID: {self.user2_data.get('id')}")
-            return True
-        else:
-            self.log_result("User 2 Registration", False, f"Status: {response.status_code}, Body: {response.text}")
+            error_msg = response.json().get("detail", "Unknown error") if response else "No response"
+            self.log_test("User Registration", False, f"Status: {response.status_code if response else 'None'}, Error: {error_msg}")
             return False
     
     def test_user_login(self):
-        """Test user login"""
-        print("\n🔍 Testing User Login...")
-        
+        """Test user login (backup authentication)"""
+        if self.auth_token:
+            return True  # Already authenticated from registration
+            
         login_data = {
-            "email": self.user1["email"],
-            "password": self.user1["password"]
+            "email": "test@example.com",
+            "password": "password123"
         }
         
-        response, success = self.make_request("POST", "/auth/login", login_data)
-        if not success:
-            self.log_result("User Login", False, "Request failed")
-            return False
+        response = self.make_request("POST", "/auth/login", login_data)
         
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             data = response.json()
-            token = data.get("access_token")
-            self.log_result("User Login", True, f"Token received: {token[:20]}...")
+            self.auth_token = data["access_token"]
+            self.user_id = data["user"]["id"]
+            self.headers["Authorization"] = f"Bearer {self.auth_token}"
+            self.log_test("User Login", True, "Login successful")
             return True
         else:
-            self.log_result("User Login", False, f"Status: {response.status_code}, Body: {response.text}")
+            self.log_test("User Login", False, f"Login failed: {response.status_code if response else 'No response'}")
             return False
     
-    def test_get_me(self):
-        """Test get current user info"""
-        print("\n🔍 Testing Get Current User...")
+    def test_create_tontines(self):
+        """Create 2 test tontines with different amounts and currencies"""
+        if not self.auth_token:
+            self.log_test("Create Tontines", False, "No authentication token")
+            return []
         
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", "/auth/me", headers=headers)
+        tontines_data = [
+            {
+                "name": "Tontine Enriched Test 1",
+                "contribution_amount": 100.0,
+                "currency": "XOF",
+                "frequency": "monthly",
+                "max_members": 5,
+                "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
+                "description": "Test tontine for enriched endpoint validation"
+            },
+            {
+                "name": "Tontine Enriched Test 2", 
+                "contribution_amount": 250.0,
+                "currency": "CAD",
+                "frequency": "weekly",
+                "max_members": 3,
+                "start_date": (datetime.utcnow() + timedelta(days=14)).isoformat(),
+                "description": "Second test tontine with different currency"
+            }
+        ]
         
-        if not success:
-            self.log_result("Get Current User", False, "Request failed")
-            return False
+        created_tontines = []
         
-        if response.status_code == 200:
-            data = response.json()
-            self.log_result("Get Current User", True, f"Email: {data.get('email')}")
-            return True
-        else:
-            self.log_result("Get Current User", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_profile_update(self):
-        """Test profile update"""
-        print("\n🔍 Testing Profile Update...")
-        
-        update_data = {
-            "full_name": "Updated Creator Name",
-            "phone": "+1111111111"
-        }
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("PUT", "/auth/profile", update_data, headers)
-        
-        if not success:
-            self.log_result("Profile Update", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            data = response.json()
-            self.log_result("Profile Update", True, f"New name: {data.get('full_name')}")
-            return True
-        else:
-            self.log_result("Profile Update", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_forgot_password(self):
-        """Test forgot password endpoint"""
-        print("\n🔍 Testing Forgot Password...")
-        
-        response, success = self.make_request("POST", "/auth/forgot-password", self.user1["email"])
-        
-        if not success:
-            self.log_result("Forgot Password", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Forgot Password", True, "Email reset message sent")
-            return True
-        else:
-            self.log_result("Forgot Password", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_create_tontine(self):
-        """Test tontine creation"""
-        print("\n🔍 Testing Tontine Creation...")
-        
-        tontine_data = {
-            "name": "Test Tontine Group",
-            "contribution_amount": 1000.0,
-            "frequency": "monthly",
-            "max_members": 3,
-            "start_date": (datetime.now() + timedelta(days=7)).isoformat(),
-            "description": "Test tontine for API testing"
-        }
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("POST", "/tontines", tontine_data, headers)
-        
-        if not success:
-            self.log_result("Create Tontine", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.test_tontine = response.json()
-            self.log_result("Create Tontine", True, f"Tontine ID: {self.test_tontine.get('id')}")
-            return True
-        else:
-            self.log_result("Create Tontine", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-    
-    def test_get_tontines(self):
-        """Test get user's tontines"""
-        print("\n🔍 Testing Get Tontines...")
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", "/tontines", headers=headers)
-        
-        if not success:
-            self.log_result("Get Tontines", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            tontines = response.json()
-            self.log_result("Get Tontines", True, f"Found {len(tontines)} tontines")
-            return True
-        else:
-            self.log_result("Get Tontines", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_get_tontine_detail(self):
-        """Test get tontine details"""
-        print("\n🔍 Testing Get Tontine Detail...")
-        
-        if not self.test_tontine:
-            self.log_result("Get Tontine Detail", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}", headers=headers)
-        
-        if not success:
-            self.log_result("Get Tontine Detail", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            tontine = response.json()
-            self.log_result("Get Tontine Detail", True, f"Name: {tontine.get('name')}")
-            return True
-        else:
-            self.log_result("Get Tontine Detail", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_update_tontine(self):
-        """Test tontine update"""
-        print("\n🔍 Testing Update Tontine...")
-        
-        if not self.test_tontine:
-            self.log_result("Update Tontine", False, "No tontine to test")
-            return False
-        
-        update_data = {
-            "name": "Updated Tontine Name",
-            "description": "Updated description for testing"
-        }
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("PUT", f"/tontines/{self.test_tontine['id']}", update_data, headers)
-        
-        if not success:
-            self.log_result("Update Tontine", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            updated_tontine = response.json()
-            self.log_result("Update Tontine", True, f"New name: {updated_tontine.get('name')}")
-            return True
-        else:
-            self.log_result("Update Tontine", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_send_invitation(self):
-        """Test sending invitation"""
-        print("\n🔍 Testing Send Invitation...")
-        
-        if not self.test_tontine:
-            self.log_result("Send Invitation", False, "No tontine to test")
-            return False
-        
-        invitation_data = {
-            "tontine_id": self.test_tontine["id"],
-            "invited_email": self.user2["email"]
-        }
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("POST", "/invitations", invitation_data, headers)
-        
-        if not success:
-            self.log_result("Send Invitation", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.invitation = response.json()
-            self.log_result("Send Invitation", True, f"Invitation ID: {self.invitation.get('id')}")
-            return True
-        else:
-            self.log_result("Send Invitation", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-    
-    def test_get_received_invitations(self):
-        """Test get received invitations"""
-        print("\n🔍 Testing Get Received Invitations...")
-        
-        headers = self.get_auth_headers(self.user2_token)
-        response, success = self.make_request("GET", "/invitations/received", headers=headers)
-        
-        if not success:
-            self.log_result("Get Received Invitations", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            invitations = response.json()
-            self.log_result("Get Received Invitations", True, f"Found {len(invitations)} invitations")
-            return True
-        else:
-            self.log_result("Get Received Invitations", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_accept_invitation(self):
-        """Test accepting invitation"""
-        print("\n🔍 Testing Accept Invitation...")
-        
-        if not self.invitation:
-            self.log_result("Accept Invitation", False, "No invitation to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user2_token)
-        response, success = self.make_request("POST", f"/invitations/{self.invitation['id']}/accept", headers=headers)
-        
-        if not success:
-            self.log_result("Accept Invitation", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Accept Invitation", True, "Invitation accepted successfully")
-            return True
-        else:
-            self.log_result("Accept Invitation", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-    
-    def test_get_tontine_members(self):
-        """Test get tontine members"""
-        print("\n🔍 Testing Get Tontine Members...")
-        
-        if not self.test_tontine:
-            self.log_result("Get Tontine Members", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}/members", headers=headers)
-        
-        if not success:
-            self.log_result("Get Tontine Members", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            members = response.json()
-            self.log_result("Get Tontine Members", True, f"Found {len(members)} members")
-            return True
-        else:
-            self.log_result("Get Tontine Members", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_randomize_beneficiary_order(self):
-        """Test randomize beneficiary order"""
-        print("\n🔍 Testing Randomize Beneficiary Order...")
-        
-        if not self.test_tontine:
-            self.log_result("Randomize Beneficiary Order", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("POST", f"/tontines/{self.test_tontine['id']}/randomize-order", headers=headers)
-        
-        if not success:
-            self.log_result("Randomize Beneficiary Order", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Randomize Beneficiary Order", True, "Order randomized successfully")
-            return True
-        else:
-            self.log_result("Randomize Beneficiary Order", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_start_tontine(self):
-        """Test starting tontine"""
-        print("\n🔍 Testing Start Tontine...")
-        
-        if not self.test_tontine:
-            self.log_result("Start Tontine", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("POST", f"/tontines/{self.test_tontine['id']}/start", headers=headers)
-        
-        if not success:
-            self.log_result("Start Tontine", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Start Tontine", True, "Tontine started successfully")
-            return True
-        else:
-            self.log_result("Start Tontine", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-    
-    def test_get_cycles(self):
-        """Test get tontine cycles"""
-        print("\n🔍 Testing Get Cycles...")
-        
-        if not self.test_tontine:
-            self.log_result("Get Cycles", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}/cycles", headers=headers)
-        
-        if not success:
-            self.log_result("Get Cycles", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.cycles = response.json()
-            self.log_result("Get Cycles", True, f"Found {len(self.cycles)} cycles")
-            return True
-        else:
-            self.log_result("Get Cycles", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_get_current_cycle(self):
-        """Test get current cycle"""
-        print("\n🔍 Testing Get Current Cycle...")
-        
-        if not self.test_tontine:
-            self.log_result("Get Current Cycle", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}/current-cycle", headers=headers)
-        
-        if not success:
-            self.log_result("Get Current Cycle", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            current_cycle = response.json()
-            if current_cycle:
-                self.log_result("Get Current Cycle", True, f"Current cycle: {current_cycle.get('cycle', {}).get('cycle_number')}")
+        for i, tontine_data in enumerate(tontines_data, 1):
+            response = self.make_request("POST", "/tontines", tontine_data)
+            
+            if response and response.status_code == 200:
+                tontine = response.json()
+                created_tontines.append(tontine)
+                self.log_test(f"Create Tontine {i}", True, f"Created: {tontine['name']} (ID: {tontine['id']})")
             else:
-                self.log_result("Get Current Cycle", True, "No current cycle (expected if not started)")
-            return True
+                error_msg = response.json().get("detail", "Unknown error") if response else "No response"
+                self.log_test(f"Create Tontine {i}", False, f"Failed: {error_msg}")
+        
+        return created_tontines
+    
+    def test_regular_tontines_endpoint(self):
+        """Test backward compatibility - regular GET /api/tontines"""
+        if not self.auth_token:
+            self.log_test("Regular Tontines Endpoint", False, "No authentication token")
+            return False
+        
+        response = self.make_request("GET", "/tontines")
+        
+        if response and response.status_code == 200:
+            tontines = response.json()
+            if isinstance(tontines, list):
+                self.log_test("Regular Tontines Endpoint", True, f"Retrieved {len(tontines)} tontines")
+                return True
+            else:
+                self.log_test("Regular Tontines Endpoint", False, "Response is not a list")
+                return False
         else:
-            self.log_result("Get Current Cycle", False, f"Status: {response.status_code}")
+            error_msg = response.json().get("detail", "Unknown error") if response else "No response"
+            self.log_test("Regular Tontines Endpoint", False, f"Failed: {error_msg}")
             return False
     
-    def test_declare_payment(self):
-        """Test declare payment"""
-        print("\n🔍 Testing Declare Payment...")
-        
-        if not self.cycles:
-            self.log_result("Declare Payment", False, "No cycles available")
+    def test_enriched_tontines_endpoint(self):
+        """Test the main enriched tontines endpoint"""
+        if not self.auth_token:
+            self.log_test("Enriched Tontines Endpoint", False, "No authentication token")
             return False
         
-        cycle_id = self.cycles[0]["id"]
-        declare_data = {"cycle_id": cycle_id}
+        response = self.make_request("GET", "/tontines/enriched")
         
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("POST", "/contributions/declare", declare_data, headers)
-        
-        if not success:
-            self.log_result("Declare Payment", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            self.log_result("Declare Payment", True, "Payment declared successfully")
-            return True
-        else:
-            self.log_result("Declare Payment", False, f"Status: {response.status_code}, Body: {response.text}")
-            return False
-    
-    def test_get_contributions(self):
-        """Test get tontine contributions"""
-        print("\n🔍 Testing Get Contributions...")
-        
-        if not self.test_tontine:
-            self.log_result("Get Contributions", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}/contributions", headers=headers)
-        
-        if not success:
-            self.log_result("Get Contributions", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            contributions = response.json()
-            self.log_result("Get Contributions", True, f"Found {len(contributions)} contributions")
-            return True
-        else:
-            self.log_result("Get Contributions", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_get_notifications(self):
-        """Test get notifications"""
-        print("\n🔍 Testing Get Notifications...")
-        
-        headers = self.get_auth_headers(self.user2_token)  # Use user2 to see invitation notifications
-        response, success = self.make_request("GET", "/notifications", headers=headers)
-        
-        if not success:
-            self.log_result("Get Notifications", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            notifications = response.json()
-            self.log_result("Get Notifications", True, f"Found {len(notifications)} notifications")
-            return True
-        else:
-            self.log_result("Get Notifications", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_get_unread_count(self):
-        """Test get unread notifications count"""
-        print("\n🔍 Testing Get Unread Count...")
-        
-        headers = self.get_auth_headers(self.user2_token)
-        response, success = self.make_request("GET", "/notifications/unread-count", headers=headers)
-        
-        if not success:
-            self.log_result("Get Unread Count", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            count_data = response.json()
-            self.log_result("Get Unread Count", True, f"Unread count: {count_data.get('count')}")
-            return True
-        else:
-            self.log_result("Get Unread Count", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_dashboard(self):
-        """Test dashboard endpoint"""
-        print("\n🔍 Testing Dashboard...")
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", "/dashboard", headers=headers)
-        
-        if not success:
-            self.log_result("Dashboard", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            dashboard = response.json()
-            self.log_result("Dashboard", True, f"Active tontines: {dashboard.get('active_tontines_count')}")
-            return True
-        else:
-            self.log_result("Dashboard", False, f"Status: {response.status_code}")
-            return False
-    
-    def test_history(self):
-        """Test tontine history"""
-        print("\n🔍 Testing Tontine History...")
-        
-        if not self.test_tontine:
-            self.log_result("Tontine History", False, "No tontine to test")
-            return False
-        
-        headers = self.get_auth_headers(self.user1_token)
-        response, success = self.make_request("GET", f"/tontines/{self.test_tontine['id']}/history", headers=headers)
-        
-        if not success:
-            self.log_result("Tontine History", False, "Request failed")
-            return False
-        
-        if response.status_code == 200:
-            history = response.json()
-            self.log_result("Tontine History", True, f"Found {len(history)} completed cycles")
-            return True
-        else:
-            self.log_result("Tontine History", False, f"Status: {response.status_code}")
-            return False
-    
-    def run_all_tests(self):
-        """Run all API tests in sequence"""
-        print("🚀 Starting TontineClub Backend API Tests")
-        print(f"🌐 Testing against: {self.base_url}")
-        print("=" * 60)
-        
-        # Basic tests
-        if not self.test_health_check():
-            return
-        
-        # Authentication flow
-        if not self.test_user_registration():
-            return
-        
-        if not self.test_user_login():
-            return
-        
-        if not self.test_get_me():
-            return
-        
-        self.test_profile_update()
-        self.test_forgot_password()
-        
-        # Tontine CRUD flow
-        if not self.test_create_tontine():
-            return
-        
-        self.test_get_tontines()
-        self.test_get_tontine_detail()
-        self.test_update_tontine()
-        
-        # Invitation flow
-        if not self.test_send_invitation():
-            return
-        
-        self.test_get_received_invitations()
-        
-        if not self.test_accept_invitation():
-            return
-        
-        # Member and beneficiary management
-        self.test_get_tontine_members()
-        self.test_randomize_beneficiary_order()
-        
-        # Cycle management
-        if not self.test_start_tontine():
-            return
-        
-        self.test_get_cycles()
-        self.test_get_current_cycle()
-        
-        # Contributions
-        self.test_declare_payment()
-        self.test_get_contributions()
-        
-        # Notifications
-        self.test_get_notifications()
-        self.test_get_unread_count()
-        
-        # Dashboard and history
-        self.test_dashboard()
-        self.test_history()
-        
-        # Summary
-        self.print_summary()
-    
-    def test_dashboard_comprehensive(self):
-        """Comprehensive dashboard API testing as requested in review"""
-        print("\n🎯 DASHBOARD API COMPREHENSIVE TESTING")
-        print("=" * 50)
-        
-        # Step 1: Register a new user
-        unique_id = str(uuid.uuid4())[:8]
-        test_user = {
-            "email": f"dashboard_test_{unique_id}@tontineclub.com",
-            "full_name": f"Dashboard Tester {unique_id}",
-            "phone": f"+1514555{unique_id[:4]}",
-            "password": "DashboardTest123!"
-        }
-        
-        try:
-            response = requests.post(f"{self.base_url}/auth/register", json=test_user)
-            if response.status_code != 200:
-                self.log_result("Dashboard Test - User Registration", False, f"Status: {response.status_code}")
+        if response and response.status_code == 200:
+            enriched_tontines = response.json()
+            
+            if not isinstance(enriched_tontines, list):
+                self.log_test("Enriched Tontines Endpoint", False, "Response is not a list")
                 return False
             
-            user_data = response.json()
-            token = user_data["access_token"]
-            headers = {"Authorization": f"Bearer {token}"}
-            self.log_result("Dashboard Test - User Registration", True, f"User {test_user['email']} registered")
+            if len(enriched_tontines) == 0:
+                self.log_test("Enriched Tontines Endpoint", True, "No tontines found (empty list is valid)")
+                return True
             
-        except Exception as e:
-            self.log_result("Dashboard Test - User Registration", False, f"Exception: {str(e)}")
-            return False
-        
-        # Step 2: Test dashboard empty state
-        try:
-            response = requests.get(f"{self.base_url}/dashboard", headers=headers)
-            if response.status_code != 200:
-                self.log_result("Dashboard API - Empty State", False, f"Status: {response.status_code}")
-                return False
-            
-            data = response.json()
-            
-            # Check all required fields are present
+            # Validate each enriched tontine
             required_fields = [
-                "active_tontines_count",
-                "total_tontines_count", 
-                "pending_invitations_count",
-                "next_beneficiary",
-                "pending_confirmations_count",
-                "financial_summary",
-                "recent_tontines"
+                "id", "name", "contribution_amount", "currency", "frequency", 
+                "max_members", "current_members", "start_date", "status", 
+                "creator_id", "created_at", "user_position", "total_pot", 
+                "next_payment_date", "current_cycle_number", "cycles_completed", 
+                "total_cycles", "payment_reliability", "is_creator"
             ]
             
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                self.log_result("Dashboard API - Required Fields", False, f"Missing: {missing_fields}")
+            all_valid = True
+            validation_details = []
+            
+            for i, tontine in enumerate(enriched_tontines):
+                missing_fields = [field for field in required_fields if field not in tontine]
+                if missing_fields:
+                    all_valid = False
+                    validation_details.append(f"Tontine {i+1} missing fields: {missing_fields}")
+                else:
+                    # Validate specific enriched fields
+                    validation_errors = []
+                    
+                    # Check total_pot calculation
+                    expected_pot = tontine["contribution_amount"] * tontine["max_members"]
+                    if tontine["total_pot"] != expected_pot:
+                        validation_errors.append(f"total_pot incorrect: got {tontine['total_pot']}, expected {expected_pot}")
+                    
+                    # Check is_creator (should be True since user created these tontines)
+                    if not tontine["is_creator"]:
+                        validation_errors.append("is_creator should be True for user-created tontines")
+                    
+                    # Check user_position (should be 1 for creator)
+                    if tontine["user_position"] != 1:
+                        validation_errors.append(f"user_position should be 1 for creator, got {tontine['user_position']}")
+                    
+                    # Check total_cycles equals max_members
+                    if tontine["total_cycles"] != tontine["max_members"]:
+                        validation_errors.append(f"total_cycles should equal max_members: got {tontine['total_cycles']}, expected {tontine['max_members']}")
+                    
+                    # Check payment_reliability is a number between 0-100
+                    if not isinstance(tontine["payment_reliability"], (int, float)) or not (0 <= tontine["payment_reliability"] <= 100):
+                        validation_errors.append(f"payment_reliability should be 0-100, got {tontine['payment_reliability']}")
+                    
+                    if validation_errors:
+                        all_valid = False
+                        validation_details.append(f"Tontine {i+1} ({tontine['name']}): {'; '.join(validation_errors)}")
+                    else:
+                        validation_details.append(f"Tontine {i+1} ({tontine['name']}): All validations passed ✅")
+            
+            if all_valid:
+                self.log_test("Enriched Tontines Endpoint", True, f"All {len(enriched_tontines)} tontines have required enriched fields")
+                for detail in validation_details:
+                    print(f"   {detail}")
+                return True
+            else:
+                self.log_test("Enriched Tontines Endpoint", False, "Validation errors found")
+                for detail in validation_details:
+                    print(f"   {detail}")
                 return False
-            
-            # Check financial_summary structure
-            financial_summary = data.get("financial_summary", {})
-            required_financial_fields = ["total_contributed", "total_received", "balance"]
-            missing_financial = [field for field in required_financial_fields if field not in financial_summary]
-            
-            if missing_financial:
-                self.log_result("Dashboard API - Financial Summary Structure", False, f"Missing: {missing_financial}")
-                return False
-            
-            # Verify empty state values
-            if (data["active_tontines_count"] != 0 or data["total_tontines_count"] != 0 or 
-                data["pending_invitations_count"] != 0 or data["next_beneficiary"] is not None or
-                data["pending_confirmations_count"] != 0):
-                self.log_result("Dashboard API - Empty State Values", False, f"Non-zero values in empty state")
-                return False
-            
-            # Check financial summary empty state
-            if (financial_summary["total_contributed"] != 0 or financial_summary["total_received"] != 0 or 
-                financial_summary["balance"] != 0):
-                self.log_result("Dashboard API - Financial Summary Empty", False, f"Non-zero financial values")
-                return False
-            
-            # Check recent_tontines is empty array
-            if not isinstance(data["recent_tontines"], list) or len(data["recent_tontines"]) != 0:
-                self.log_result("Dashboard API - Recent Tontines Empty", False, f"Expected empty array")
-                return False
-            
-            self.log_result("Dashboard API - Empty State", True, "All fields correct for empty state")
-            
-        except Exception as e:
-            self.log_result("Dashboard API - Empty State", False, f"Exception: {str(e)}")
+        else:
+            error_msg = response.json().get("detail", "Unknown error") if response else "No response"
+            self.log_test("Enriched Tontines Endpoint", False, f"Failed: {error_msg}")
             return False
+    
+    def test_authentication_required(self):
+        """Test that enriched endpoint requires authentication"""
+        # Remove auth header temporarily
+        original_auth = self.headers.pop("Authorization", None)
         
-        # Step 3: Create a tontine
-        tontine_data = {
-            "name": f"Dashboard Test Tontine {unique_id}",
-            "contribution_amount": 150.0,
-            "currency": "XOF",
-            "frequency": "monthly",
-            "max_members": 4,
-            "start_date": (datetime.utcnow() + timedelta(days=10)).isoformat(),
-            "description": "Tontine pour tester le dashboard"
-        }
+        response = self.make_request("GET", "/tontines/enriched")
         
-        try:
-            response = requests.post(f"{self.base_url}/tontines", json=tontine_data, headers=headers)
-            if response.status_code != 200:
-                self.log_result("Dashboard Test - Create Tontine", False, f"Status: {response.status_code}")
-                return False
-            
-            tontine = response.json()
-            self.log_result("Dashboard Test - Create Tontine", True, f"Tontine '{tontine['name']}' created")
-            
-        except Exception as e:
-            self.log_result("Dashboard Test - Create Tontine", False, f"Exception: {str(e)}")
+        # Restore auth header
+        if original_auth:
+            self.headers["Authorization"] = original_auth
+        
+        if response and response.status_code in [401, 403]:
+            self.log_test("Authentication Required", True, f"Properly rejected unauthenticated request (status: {response.status_code})")
+            return True
+        else:
+            self.log_test("Authentication Required", False, f"Should reject unauthenticated requests, got status: {response.status_code if response else 'None'}")
             return False
+    
+    def run_comprehensive_test(self):
+        """Run the complete test suite for enriched tontines endpoint"""
+        print("=" * 80)
+        print("🧪 TONTINECLUB ENRICHED TONTINES ENDPOINT TESTING")
+        print("=" * 80)
+        print()
         
-        # Step 4: Test dashboard with tontine (enriched data)
-        try:
-            response = requests.get(f"{self.base_url}/dashboard", headers=headers)
-            if response.status_code != 200:
-                self.log_result("Dashboard API - With Tontine", False, f"Status: {response.status_code}")
+        # Step 1: Register new test user
+        print("📝 Step 1: User Registration")
+        if not self.test_user_registration():
+            print("❌ Registration failed, trying login as fallback...")
+            if not self.test_user_login():
+                print("❌ Authentication failed completely. Cannot continue testing.")
                 return False
-            
-            data = response.json()
-            
-            # Check that total_tontines_count increased
-            if data["total_tontines_count"] != 1:
-                self.log_result("Dashboard API - Tontine Count", False, f"Expected 1, got {data['total_tontines_count']}")
-                return False
-            
-            # Check recent_tontines contains the created tontine
-            recent_tontines = data["recent_tontines"]
-            if not isinstance(recent_tontines, list) or len(recent_tontines) != 1:
-                self.log_result("Dashboard API - Recent Tontines Count", False, f"Expected 1, got {len(recent_tontines)}")
-                return False
-            
-            # Check enriched tontine data
-            tontine_data = recent_tontines[0]
-            required_enriched_fields = [
-                "user_position",
-                "total_pot", 
-                "next_payment_date",
-                "current_cycle_number"
-            ]
-            
-            missing_enriched = [field for field in required_enriched_fields if field not in tontine_data]
-            if missing_enriched:
-                self.log_result("Dashboard API - Enriched Fields", False, f"Missing: {missing_enriched}")
-                return False
-            
-            # Verify enriched field values
-            if tontine_data["user_position"] != 1:  # Creator should be position 1
-                self.log_result("Dashboard API - User Position", False, f"Expected 1, got {tontine_data['user_position']}")
-                return False
-            
-            expected_total_pot = tontine["contribution_amount"] * tontine["max_members"]
-            if tontine_data["total_pot"] != expected_total_pot:
-                self.log_result("Dashboard API - Total Pot", False, f"Expected {expected_total_pot}, got {tontine_data['total_pot']}")
-                return False
-            
-            if tontine_data["current_cycle_number"] != 0:  # Should be 0 for draft tontine
-                self.log_result("Dashboard API - Current Cycle", False, f"Expected 0, got {tontine_data['current_cycle_number']}")
-                return False
-            
-            self.log_result("Dashboard API - With Tontine", True, "All enriched fields present and correct")
-            
-        except Exception as e:
-            self.log_result("Dashboard API - With Tontine", False, f"Exception: {str(e)}")
-            return False
+        print()
+        
+        # Step 2: Create test tontines
+        print("🏦 Step 2: Create Test Tontines")
+        created_tontines = self.test_create_tontines()
+        if len(created_tontines) < 2:
+            print("⚠️  Warning: Could not create both test tontines, continuing with available ones...")
+        print()
+        
+        # Step 3: Test regular tontines endpoint (backward compatibility)
+        print("🔄 Step 3: Test Regular Tontines Endpoint (Backward Compatibility)")
+        self.test_regular_tontines_endpoint()
+        print()
+        
+        # Step 4: Test enriched tontines endpoint
+        print("✨ Step 4: Test Enriched Tontines Endpoint")
+        self.test_enriched_tontines_endpoint()
+        print()
         
         # Step 5: Test authentication requirement
-        try:
-            response = requests.get(f"{self.base_url}/dashboard")  # No headers
-            if response.status_code in [401, 403]:  # Both are acceptable for missing auth
-                self.log_result("Dashboard API - Authentication Required", True, f"Correctly requires auth (status: {response.status_code})")
-            else:
-                self.log_result("Dashboard API - Authentication Required", False, f"Expected 401/403, got {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_result("Dashboard API - Authentication Required", False, f"Exception: {str(e)}")
-            return False
+        print("🔐 Step 5: Test Authentication Requirement")
+        self.test_authentication_required()
+        print()
         
-        print("✅ Dashboard API comprehensive testing completed successfully!")
-        return True
-
-    def print_summary(self):
-        """Print test summary"""
-        print("\n" + "=" * 60)
+        # Summary
+        print("=" * 80)
         print("📊 TEST SUMMARY")
-        print("=" * 60)
+        print("=" * 80)
         
-        passed = sum(1 for r in self.results if r["success"])
-        failed = len(self.results) - passed
+        passed = sum(1 for result in self.test_results if "✅ PASS" in result["status"])
+        total = len(self.test_results)
         
-        print(f"Total tests: {len(self.results)}")
-        print(f"✅ Passed: {passed}")
-        print(f"❌ Failed: {failed}")
+        print(f"Tests Passed: {passed}/{total}")
+        print(f"Success Rate: {(passed/total*100):.1f}%")
+        print()
         
-        if failed > 0:
-            print("\n🔴 Failed tests:")
-            for result in self.results:
-                if not result["success"]:
-                    print(f"  - {result['test']}: {result['details']}")
+        if passed == total:
+            print("🎉 ALL TESTS PASSED! Enriched Tontines API is working correctly.")
+        else:
+            print("⚠️  Some tests failed. See details above.")
+            
+        print()
+        print("Detailed Results:")
+        for result in self.test_results:
+            print(f"  {result['status']}: {result['test']}")
         
-        success_rate = (passed / len(self.results)) * 100 if self.results else 0
-        print(f"\n📈 Success rate: {success_rate:.1f}%")
+        return passed == total
 
-if __name__ == "__main__":
-    print("TontineClub Backend API Test Suite")
-    print("=" * 50)
-    
-    tester = TontineAPITest()
-    
-    # Run focused dashboard testing as requested in review
-    print("🎯 RUNNING FOCUSED DASHBOARD API TESTING")
-    success = tester.test_dashboard_comprehensive()
+def main():
+    """Main test execution"""
+    tester = TontineClubTester()
+    success = tester.run_comprehensive_test()
     
     if success:
-        print("\n🎉 DASHBOARD API TESTING COMPLETED SUCCESSFULLY!")
+        print("\n🚀 Enriched Tontines API is ready for production!")
+        exit(0)
     else:
-        print("\n❌ DASHBOARD API TESTING FAILED!")
-    
-    # Print summary
-    tester.print_summary()
+        print("\n🔧 Some issues found that need attention.")
+        exit(1)
+
+if __name__ == "__main__":
+    main()

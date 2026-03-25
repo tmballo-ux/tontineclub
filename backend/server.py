@@ -398,6 +398,75 @@ async def get_my_tontines(current_user: dict = Depends(get_current_user)):
     tontines = await db.tontines.find({"id": {"$in": tontine_ids}}).to_list(1000)
     return [Tontine(**t) for t in tontines]
 
+@api_router.get("/tontines/enriched")
+async def get_my_tontines_enriched(current_user: dict = Depends(get_current_user)):
+    """Get enriched tontine data with financial details, progress, and user position."""
+    member_records = await db.tontine_members.find({"user_id": current_user["id"]}).to_list(1000)
+    member_map = {m["tontine_id"]: m for m in member_records}
+    tontine_ids = list(member_map.keys())
+    
+    tontines = await db.tontines.find({"id": {"$in": tontine_ids}}).sort("created_at", -1).to_list(1000)
+    
+    enriched = []
+    for t in tontines:
+        tid = t["id"]
+        member = member_map.get(tid, {})
+        
+        # User position
+        user_position = member.get("beneficiary_order", 0) if member else 0
+        
+        # Total pot
+        total_pot = t["contribution_amount"] * t["max_members"]
+        
+        # Is creator
+        is_creator = t["creator_id"] == current_user["id"]
+        
+        # Cycle info
+        all_cycles = await db.cycles.find({"tontine_id": tid}).to_list(1000)
+        total_cycles = t["max_members"]  # one cycle per member
+        cycles_completed = sum(1 for c in all_cycles if c.get("is_completed", False))
+        
+        current_cycle = None
+        for c in all_cycles:
+            if c.get("is_current", False):
+                current_cycle = c
+                break
+        
+        current_cycle_number = current_cycle["cycle_number"] if current_cycle else 0
+        
+        # Next payment date
+        next_payment_date = None
+        if current_cycle:
+            next_payment_date = current_cycle.get("end_date")
+        elif t["status"] == TontineStatus.DRAFT:
+            next_payment_date = t["start_date"]
+        
+        # Payment reliability: % of confirmed contributions by this user
+        user_contribs = await db.contributions.find({
+            "member_id": current_user["id"],
+            "cycle_id": {"$in": [c["id"] for c in all_cycles]}
+        }).to_list(10000)
+        
+        total_user_contribs = len(user_contribs)
+        confirmed_user_contribs = sum(1 for c in user_contribs if c["status"] == PaymentStatus.CONFIRMED)
+        payment_reliability = round((confirmed_user_contribs / total_user_contribs * 100)) if total_user_contribs > 0 else 100
+        
+        # Build enriched object — remove _id for JSON serialization
+        tontine_data = {k: v for k, v in t.items() if k != "_id"}
+        tontine_data.update({
+            "user_position": user_position,
+            "total_pot": total_pot,
+            "next_payment_date": next_payment_date.isoformat() if next_payment_date and hasattr(next_payment_date, 'isoformat') else str(next_payment_date) if next_payment_date else None,
+            "current_cycle_number": current_cycle_number,
+            "cycles_completed": cycles_completed,
+            "total_cycles": total_cycles,
+            "payment_reliability": payment_reliability,
+            "is_creator": is_creator,
+        })
+        enriched.append(tontine_data)
+    
+    return enriched
+
 @api_router.get("/tontines/{tontine_id}", response_model=Tontine)
 async def get_tontine(tontine_id: str, current_user: dict = Depends(get_current_user)):
     tontine = await db.tontines.find_one({"id": tontine_id})
