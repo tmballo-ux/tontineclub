@@ -1,12 +1,38 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { useTontineStore } from '@/src/store/tontineStore';
-import { View, Text, StyleSheet } from 'react-native';
+import { useSubscriptionStore } from '@/src/store/subscriptionStore';
+import { useAuthStore } from '@/src/store/authStore';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 export default function TabsLayout() {
   const { unreadCount } = useTontineStore();
+  const { isAuthenticated } = useAuthStore();
+  const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStatus();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && isChecked && !isLoading && !hasAccess) {
+      router.replace('/subscription/paywall');
+    }
+  }, [isAuthenticated, isChecked, isLoading, hasAccess]);
+
+  if (isAuthenticated && isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Vérification de l'abonnement...</Text>
+      </View>
+    );
+  }
 
   return (
     <Tabs
@@ -86,6 +112,17 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
   badge: {
     position: 'absolute',
     top: -6,

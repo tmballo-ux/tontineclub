@@ -85,7 +85,18 @@ class NotificationType(str, Enum):
     PAYMENT_CONTESTED = "payment_contested"
     MEMBER_LEFT = "member_left"
     ACCOUNT_DELETED = "account_deleted"
+    TRIAL_STARTED = "trial_started"
+    TRIAL_ENDING = "trial_ending"
+    SUBSCRIPTION_ACTIVE = "subscription_active"
+    SUBSCRIPTION_EXPIRED = "subscription_expired"
     SYSTEM = "system"
+
+class SubscriptionStatus(str, Enum):
+    NONE = "none"
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    CANCELED = "canceled"
+    EXPIRED = "expired"
 
 # ===================== MODELS =====================
 
@@ -1183,6 +1194,205 @@ async def get_tontine_history(tontine_id: str, current_user: dict = Depends(get_
         })
     
     return history
+
+# ===================== SUBSCRIPTION ENDPOINTS =====================
+
+TRIAL_DURATION_DAYS = 7
+SUBSCRIPTION_PRICE_USD = 3.00
+
+@api_router.get("/subscription/status")
+async def get_subscription_status(current_user: dict = Depends(get_current_user)):
+    """Check user's current subscription status."""
+    user_id = current_user["id"]
+    sub = await db.subscriptions.find_one({"user_id": user_id})
+    
+    if not sub:
+        return {
+            "status": SubscriptionStatus.NONE,
+            "has_access": False,
+            "trial_end": None,
+            "subscription_end": None,
+            "plan": None,
+        }
+    
+    now = datetime.utcnow()
+    current_status = sub.get("status", SubscriptionStatus.NONE)
+    
+    # Check if trial or subscription has expired
+    if current_status == SubscriptionStatus.TRIALING:
+        trial_end = sub.get("trial_end")
+        if trial_end and now > trial_end:
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": SubscriptionStatus.EXPIRED}}
+            )
+            current_status = SubscriptionStatus.EXPIRED
+    
+    if current_status == SubscriptionStatus.ACTIVE:
+        sub_end = sub.get("subscription_end")
+        if sub_end and now > sub_end:
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": SubscriptionStatus.EXPIRED}}
+            )
+            current_status = SubscriptionStatus.EXPIRED
+    
+    has_access = current_status in [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE]
+    
+    return {
+        "status": current_status,
+        "has_access": has_access,
+        "trial_start": sub.get("trial_start"),
+        "trial_end": sub.get("trial_end"),
+        "subscription_start": sub.get("subscription_start"),
+        "subscription_end": sub.get("subscription_end"),
+        "plan": sub.get("plan"),
+        "purchase_token": sub.get("purchase_token"),
+    }
+
+@api_router.post("/subscription/activate-trial")
+async def activate_trial(current_user: dict = Depends(get_current_user)):
+    """Start a 7-day free trial."""
+    user_id = current_user["id"]
+    
+    existing = await db.subscriptions.find_one({"user_id": user_id})
+    if existing:
+        existing_status = existing.get("status")
+        if existing_status in [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE]:
+            raise HTTPException(status_code=400, detail="Vous avez déjà un abonnement ou essai actif.")
+        if existing.get("trial_used", False):
+            raise HTTPException(status_code=400, detail="Vous avez déjà utilisé votre essai gratuit.")
+    
+    now = datetime.utcnow()
+    trial_end = now + timedelta(days=TRIAL_DURATION_DAYS)
+    
+    sub_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "status": SubscriptionStatus.TRIALING,
+        "plan": "tontine_premium_monthly",
+        "trial_start": now,
+        "trial_end": trial_end,
+        "trial_used": True,
+        "subscription_start": None,
+        "subscription_end": None,
+        "purchase_token": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    if existing:
+        await db.subscriptions.update_one(
+            {"user_id": user_id},
+            {"$set": {**sub_doc, "id": existing["id"]}}
+        )
+    else:
+        await db.subscriptions.insert_one(sub_doc)
+    
+    # Create notification
+    await create_notification(
+        user_id=user_id,
+        notif_type=NotificationType.TRIAL_STARTED,
+        title="Essai gratuit activé !",
+        message=f"Votre essai gratuit de {TRIAL_DURATION_DAYS} jours a commencé. Profitez de toutes les fonctionnalités TontineClub Premium."
+    )
+    
+    return {
+        "success": True,
+        "message": f"Votre essai gratuit de {TRIAL_DURATION_DAYS} jours a commencé !",
+        "status": SubscriptionStatus.TRIALING,
+        "trial_end": trial_end.isoformat(),
+    }
+
+@api_router.post("/subscription/verify-purchase")
+async def verify_purchase(
+    purchase_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify a Google Play purchase and activate subscription.
+    In production, this should verify the purchase token with Google Play Developer API.
+    For now, it accepts the purchase and activates the subscription."""
+    user_id = current_user["id"]
+    purchase_token = purchase_data.get("purchase_token", "")
+    product_id = purchase_data.get("product_id", "")
+    
+    if product_id != "tontine_premium_monthly":
+        raise HTTPException(status_code=400, detail="Produit non reconnu")
+    
+    # TODO: In production, verify purchase_token with Google Play Developer API
+    # https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions
+    
+    now = datetime.utcnow()
+    sub_end = now + timedelta(days=30)  # Monthly subscription
+    
+    existing = await db.subscriptions.find_one({"user_id": user_id})
+    
+    update_data = {
+        "status": SubscriptionStatus.ACTIVE,
+        "plan": "tontine_premium_monthly",
+        "subscription_start": now,
+        "subscription_end": sub_end,
+        "purchase_token": purchase_token,
+        "updated_at": now,
+    }
+    
+    if existing:
+        await db.subscriptions.update_one(
+            {"user_id": user_id},
+            {"$set": update_data}
+        )
+    else:
+        update_data.update({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "trial_start": None,
+            "trial_end": None,
+            "trial_used": False,
+            "created_at": now,
+        })
+        await db.subscriptions.insert_one(update_data)
+    
+    await create_notification(
+        user_id=user_id,
+        notif_type=NotificationType.SUBSCRIPTION_ACTIVE,
+        title="Abonnement activé !",
+        message="Votre abonnement TontineClub Premium est maintenant actif. Merci pour votre confiance !"
+    )
+    
+    return {
+        "success": True,
+        "message": "Abonnement activé avec succès !",
+        "status": SubscriptionStatus.ACTIVE,
+        "subscription_end": sub_end.isoformat(),
+    }
+
+@api_router.post("/subscription/cancel")
+async def cancel_subscription(current_user: dict = Depends(get_current_user)):
+    """Cancel subscription (access remains until end of period)."""
+    user_id = current_user["id"]
+    
+    sub = await db.subscriptions.find_one({"user_id": user_id})
+    if not sub:
+        raise HTTPException(status_code=400, detail="Aucun abonnement trouvé")
+    
+    if sub["status"] not in [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE]:
+        raise HTTPException(status_code=400, detail="Aucun abonnement actif à annuler")
+    
+    await db.subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": {"status": SubscriptionStatus.CANCELED, "updated_at": datetime.utcnow()}}
+    )
+    
+    end_date = sub.get("trial_end") or sub.get("subscription_end")
+    end_msg = ""
+    if end_date:
+        end_msg = f" Vous conservez l'accès jusqu'au {end_date.strftime('%d/%m/%Y')}."
+    
+    return {
+        "success": True,
+        "message": f"Abonnement annulé.{end_msg}",
+        "access_until": end_date.isoformat() if end_date else None,
+    }
 
 # ===================== ACCOUNT DELETION ENDPOINTS =====================
 

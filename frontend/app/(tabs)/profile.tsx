@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/src/store/authStore';
 import { colors, shadows } from '@/src/theme/colors';
 import axios from 'axios';
+import { useSubscriptionStore, SubStatus } from '@/src/store/subscriptionStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
@@ -23,6 +24,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateProfile, token } = useAuthStore();
+  const { status: subStatus, trialEnd, subscriptionEnd, cancelSubscription, fetchStatus: fetchSubStatus } = useSubscriptionStore();
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -179,6 +181,48 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
+
+        {/* Subscription Status */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Abonnement</Text>
+          <View style={styles.subStatusRow}>
+            <View style={[styles.subStatusIcon, { backgroundColor: subStatus === 'trialing' || subStatus === 'active' ? '#D1FAE5' : '#FEF3C7' }]}>
+              <Ionicons
+                name={subStatus === 'trialing' || subStatus === 'active' ? 'diamond' : 'diamond-outline'}
+                size={20}
+                color={subStatus === 'trialing' || subStatus === 'active' ? '#059669' : '#D97706'}
+              />
+            </View>
+            <View style={styles.subStatusText}>
+              <Text style={styles.subStatusLabel}>TontineClub Premium</Text>
+              <Text style={[styles.subStatusValue, { color: subStatus === 'trialing' || subStatus === 'active' ? '#059669' : '#D97706' }]}>
+                {subStatus === 'trialing' ? 'Essai gratuit' : subStatus === 'active' ? 'Actif' : subStatus === 'canceled' ? 'Annulé' : subStatus === 'expired' ? 'Expiré' : 'Inactif'}
+              </Text>
+              {(subStatus === 'trialing' && trialEnd) && (
+                <Text style={styles.subEndDate}>Expire le {new Date(trialEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+              )}
+              {(subStatus === 'active' && subscriptionEnd) && (
+                <Text style={styles.subEndDate}>Renouvellement le {new Date(subscriptionEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+              )}
+            </View>
+          </View>
+          {(subStatus === 'trialing' || subStatus === 'active') && (
+            <TouchableOpacity
+              style={styles.cancelSubBtn}
+              onPress={async () => {
+                try {
+                  const msg = await cancelSubscription();
+                  setSuccessMsg(msg);
+                  await fetchSubStatus();
+                } catch (e: any) {
+                  setErrorMsg(e.response?.data?.detail || 'Erreur');
+                }
+              }}
+            >
+              <Text style={styles.cancelSubText}>Annuler l'abonnement</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Informations */}
         <View style={styles.sectionCard}>
@@ -399,6 +443,16 @@ const styles = StyleSheet.create({
   deleteAccountText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
 
   version: { textAlign: 'center', color: colors.textLight, fontSize: 12, marginTop: 8, marginBottom: 16 },
+
+  // Subscription
+  subStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  subStatusIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  subStatusText: { flex: 1 },
+  subStatusLabel: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 2 },
+  subStatusValue: { fontSize: 13, fontWeight: '600' },
+  subEndDate: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  cancelSubBtn: { alignItems: 'center', paddingVertical: 8 },
+  cancelSubText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
 
   // Modal
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 20, zIndex: 100 },
