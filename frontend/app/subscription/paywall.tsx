@@ -38,8 +38,9 @@ export default function PaywallScreen() {
     try {
       const msg = await activateTrial();
       setSuccessMsg(msg);
+      // Small delay then navigate back - the tabs layout will recheck subscription
       setTimeout(() => {
-        router.replace('/(tabs)');
+        router.replace('/');
       }, 1500);
     } catch (e: any) {
       setErrorMsg(e.response?.data?.detail || 'Erreur lors de l\'activation');
