@@ -83,6 +83,9 @@ class NotificationType(str, Enum):
     PAYMENT_ANNOUNCED = "payment_announced"
     PAYMENT_CONFIRMED = "payment_confirmed"
     PAYMENT_CONTESTED = "payment_contested"
+    MEMBER_LEFT = "member_left"
+    ACCOUNT_DELETED = "account_deleted"
+    SYSTEM = "system"
 
 # ===================== MODELS =====================
 
@@ -1180,6 +1183,204 @@ async def get_tontine_history(tontine_id: str, current_user: dict = Depends(get_
         })
     
     return history
+
+# ===================== ACCOUNT DELETION ENDPOINTS =====================
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+    confirm: bool = False
+
+@api_router.get("/account/check-deletion")
+async def check_account_deletion(current_user: dict = Depends(get_current_user)):
+    """Check what impact deleting this account would have."""
+    user_id = current_user["id"]
+    
+    # Get all tontine memberships
+    memberships = await db.tontine_members.find({"user_id": user_id}).to_list(1000)
+    tontine_ids = [m["tontine_id"] for m in memberships]
+    
+    # Tontines where user is creator (any non-completed tontine blocks deletion)
+    created_tontines = await db.tontines.find({
+        "id": {"$in": tontine_ids},
+        "creator_id": user_id,
+        "status": {"$in": [TontineStatus.DRAFT, TontineStatus.ACTIVE]}
+    }).to_list(100)
+    
+    # Active tontines as member (not creator)
+    active_memberships = await db.tontines.find({
+        "id": {"$in": tontine_ids},
+        "status": TontineStatus.ACTIVE,
+        "creator_id": {"$ne": user_id}
+    }).to_list(100)
+    
+    # Pending contributions
+    pending_contribs = await db.contributions.count_documents({
+        "member_id": user_id,
+        "status": {"$in": [PaymentStatus.NOT_ANNOUNCED, PaymentStatus.ANNOUNCED]}
+    })
+    
+    # Has received pots (financial history)
+    received_pots = await db.cycles.count_documents({
+        "beneficiary_id": user_id,
+        "is_completed": True
+    })
+    
+    can_delete = len(created_tontines) == 0
+    
+    blockers = []
+    warnings = []
+    
+    if created_tontines:
+        for t in created_tontines:
+            blockers.append({
+                "type": "admin_tontine",
+                "tontine_id": t["id"],
+                "tontine_name": t["name"],
+                "message": f"Vous êtes administrateur de la tontine \"{t['name']}\". Transférez la gestion ou clôturez-la avant de supprimer votre compte."
+            })
+    
+    if active_memberships:
+        for t in active_memberships:
+            warnings.append({
+                "type": "active_member",
+                "tontine_id": t["id"],
+                "tontine_name": t["name"],
+                "message": f"Vous participez à la tontine \"{t['name']}\". Votre départ sera signalé au créateur."
+            })
+    
+    if pending_contribs > 0:
+        warnings.append({
+            "type": "pending_payments",
+            "message": f"Vous avez {pending_contribs} paiement(s) en attente."
+        })
+    
+    if received_pots > 0:
+        warnings.append({
+            "type": "financial_history",
+            "message": f"Vous avez reçu {received_pots} cagnotte(s). L'historique sera conservé pour la traçabilité."
+        })
+    
+    return {
+        "can_delete": can_delete,
+        "blockers": blockers,
+        "warnings": warnings,
+        "active_tontines_as_admin": len(created_tontines),
+        "active_tontines_as_member": len(active_memberships),
+        "pending_payments": pending_contribs,
+        "received_pots": received_pots,
+    }
+
+@api_router.post("/account/delete")
+async def delete_account(request: DeleteAccountRequest, current_user: dict = Depends(get_current_user)):
+    """Soft-delete user account with full business logic."""
+    user_id = current_user["id"]
+    user_name = current_user["full_name"]
+    
+    # Verify password
+    if not verify_password(request.password, current_user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Mot de passe incorrect")
+    
+    if not request.confirm:
+        raise HTTPException(status_code=400, detail="Vous devez confirmer la suppression")
+    
+    # Check if user is admin of any active tontine
+    memberships = await db.tontine_members.find({"user_id": user_id}).to_list(1000)
+    tontine_ids = [m["tontine_id"] for m in memberships]
+    
+    admin_tontines = await db.tontines.find({
+        "id": {"$in": tontine_ids},
+        "creator_id": user_id,
+        "status": TontineStatus.ACTIVE
+    }).to_list(100)
+    
+    if admin_tontines:
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible de supprimer le compte tant que vous êtes administrateur d'une tontine active. Transférez la gestion ou clôturez vos tontines."
+        )
+    
+    # Get active tontines where user is member
+    active_tontines = await db.tontines.find({
+        "id": {"$in": tontine_ids},
+        "status": TontineStatus.ACTIVE
+    }).to_list(100)
+    
+    # Notify creators of active tontines
+    for t in active_tontines:
+        creator_id = t["creator_id"]
+        if creator_id != user_id:
+            # Check pending payments for this user in this tontine
+            pending = await db.contributions.count_documents({
+                "member_id": user_id,
+                "cycle_id": {"$exists": True},
+                "status": {"$in": [PaymentStatus.NOT_ANNOUNCED, PaymentStatus.ANNOUNCED]}
+            })
+            
+            impact_msg = ""
+            if pending > 0:
+                impact_msg = f" Ce membre avait {pending} paiement(s) en attente."
+            
+            await create_notification(
+                user_id=creator_id,
+                notif_type=NotificationType.MEMBER_LEFT,
+                title="Membre supprimé",
+                message=f"Le membre {user_name} a supprimé son compte et ne participera plus à la tontine \"{t['name']}\".{impact_msg} La tontine doit être réorganisée.",
+                tontine_id=t["id"]
+            )
+            
+            # Decrement member count
+            await db.tontines.update_one(
+                {"id": t["id"]},
+                {"$inc": {"current_members": -1}}
+            )
+    
+    # Remove from all tontine memberships
+    await db.tontine_members.delete_many({"user_id": user_id})
+    
+    # Cancel pending invitations
+    await db.invitations.update_many(
+        {"invited_email": current_user["email"], "status": "pending"},
+        {"$set": {"status": "rejected"}}
+    )
+    
+    # Soft-delete user: mark as deleted, anonymize sensitive data but keep financial records
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": datetime.utcnow(),
+            "email": f"deleted_{user_id}@deleted.tontineclub",
+            "phone": "deleted",
+            "hashed_password": "DELETED",
+            "profile_photo": None,
+            "original_name": user_name,
+            "full_name": f"{user_name} (Compte supprimé)",
+        }}
+    )
+    
+    return {
+        "message": "Votre compte a été supprimé avec succès. Certaines données sont conservées pour des raisons de traçabilité financière.",
+        "success": True,
+    }
+
+@api_router.get("/account/stats")
+async def get_account_stats(current_user: dict = Depends(get_current_user)):
+    """Get user's tontine statistics for profile page."""
+    user_id = current_user["id"]
+    
+    memberships = await db.tontine_members.find({"user_id": user_id}).to_list(1000)
+    tontine_ids = [m["tontine_id"] for m in memberships]
+    
+    active_count = await db.tontines.count_documents({"id": {"$in": tontine_ids}, "status": {"$in": [TontineStatus.DRAFT, TontineStatus.ACTIVE]}})
+    completed_count = await db.tontines.count_documents({"id": {"$in": tontine_ids}, "status": TontineStatus.COMPLETED})
+    pending_invitations = await db.invitations.count_documents({"invited_email": current_user["email"], "status": "pending"})
+    
+    return {
+        "active_tontines": active_count,
+        "completed_tontines": completed_count,
+        "total_participations": len(tontine_ids),
+        "pending_invitations": pending_invitations,
+    }
 
 # ===================== BASIC ENDPOINTS =====================
 

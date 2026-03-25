@@ -1,238 +1,365 @@
 #!/usr/bin/env python3
+"""
+TontineClub Account Deletion and Account Stats API Testing
+Testing the new account management endpoints as per review request.
+"""
 
 import requests
 import json
+import time
 import sys
 from datetime import datetime
 
-# Base URL from frontend .env
+# Base URL from frontend/.env
 BASE_URL = "https://tontine-dashboard-1.preview.emergentagent.com/api"
 
-def test_enriched_invitations_api():
-    """Test the enriched invitations endpoint for TontineClub."""
-    
-    print("🧪 TESTING ENRICHED INVITATIONS API")
-    print("=" * 50)
-    
-    # Generate unique emails with timestamp
-    timestamp = int(datetime.now().timestamp())
-    user_a_email = f"usera_inv_{timestamp}@test.com"
-    user_b_email = f"userb_inv_{timestamp}@test.com"
-    
-    try:
-        # Step 1: Register User A
-        print("\n1️⃣ Registering User A...")
-        user_a_data = {
-            "email": user_a_email,
-            "full_name": "Alice Martin",
-            "phone": "+33600000001",
-            "password": "test123456"
-        }
+class TontineClubTester:
+    def __init__(self):
+        self.base_url = BASE_URL
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        })
+        self.test_results = []
+        self.user_a_token = None
+        self.user_b_token = None
+        self.user_a_data = None
+        self.user_b_data = None
+        self.tontine_id = None
+        # Use timestamp to make emails unique
+        self.timestamp = int(time.time())
+        self.user_a_email = f"admin_del_{self.timestamp}@test.com"
+        self.user_b_email = f"member_del_{self.timestamp}@test.com"
+
+    def log_test(self, test_name, success, details="", response_data=None):
+        """Log test results"""
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
+        if response_data and not success:
+            print(f"   Response: {json.dumps(response_data, indent=2)}")
         
-        response = requests.post(f"{BASE_URL}/auth/register", json=user_a_data, timeout=10)
-        if response.status_code not in [200, 201]:
-            print(f"❌ User A registration failed: {response.status_code} - {response.text}")
-            return False
+        self.test_results.append({
+            'test': test_name,
+            'success': success,
+            'details': details,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    def register_user(self, email, full_name, phone, password):
+        """Register a new user"""
+        try:
+            response = self.session.post(f"{self.base_url}/auth/register", json={
+                "email": email,
+                "full_name": full_name,
+                "phone": phone,
+                "password": password
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def login_user(self, email, password):
+        """Login user and return token"""
+        try:
+            response = self.session.post(f"{self.base_url}/auth/login", json={
+                "email": email,
+                "password": password
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def create_tontine(self, token, name="Test Tontine", contribution_amount=5000):
+        """Create a tontine"""
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            response = self.session.post(f"{self.base_url}/tontines", 
+                headers=headers,
+                json={
+                    "name": name,
+                    "description": "Test tontine for account deletion testing",
+                    "contribution_amount": contribution_amount,
+                    "currency": "XOF",
+                    "frequency": "monthly",
+                    "max_members": 5,
+                    "start_date": "2025-02-01T00:00:00Z"
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def get_account_stats(self, token):
+        """Test GET /api/account/stats endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            response = self.session.get(f"{self.base_url}/account/stats", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def check_account_deletion(self, token):
+        """Test GET /api/account/check-deletion endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            response = self.session.get(f"{self.base_url}/account/check-deletion", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def delete_account(self, token, password, confirm=True):
+        """Test POST /api/account/delete endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            response = self.session.post(f"{self.base_url}/account/delete", 
+                headers=headers,
+                json={
+                    "password": password,
+                    "confirm": confirm
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, data
+            else:
+                return False, response.json() if response.content else {"error": f"Status {response.status_code}"}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def run_comprehensive_test(self):
+        """Run the comprehensive test flow as specified in review request"""
+        print("🚀 Starting TontineClub Account Deletion and Stats API Testing")
+        print("=" * 70)
         
-        user_a_token = response.json()["access_token"]
-        print(f"✅ User A registered successfully")
+        # Step 1: Register User A (admin_del@test.com)
+        print("\n📝 Step 1: Register User A (Admin)")
+        success, data = self.register_user(
+            self.user_a_email, 
+            "Admin Deletion Test", 
+            "+33600111001", 
+            "test123456"
+        )
         
-        # Step 2: Login User A (already have token from registration)
-        print("\n2️⃣ User A token obtained from registration")
+        if success:
+            self.user_a_data = data
+            self.log_test("Register User A", True, f"User registered successfully")
+        else:
+            self.log_test("Register User A", False, f"Registration failed: {data}")
+            return
+
+        # Step 2: Login User A
+        print("\n🔐 Step 2: Login User A")
+        success, data = self.login_user(self.user_a_email, "test123456")
         
-        # Step 3: Create a tontine as User A
-        print("\n3️⃣ Creating tontine as User A...")
-        tontine_data = {
-            "name": "Tontine Test Invitation",
-            "contribution_amount": 5000,
-            "currency": "XOF",
-            "frequency": "monthly",
-            "max_members": 5,
-            "start_date": "2026-04-01"
-        }
+        if success and "access_token" in data:
+            self.user_a_token = data["access_token"]
+            self.log_test("Login User A", True, "Login successful")
+        else:
+            self.log_test("Login User A", False, f"Login failed: {data}")
+            return
+
+        # Step 3: Test GET /api/account/stats for User A (empty state)
+        print("\n📊 Step 3: Test Account Stats (Empty State)")
+        success, data = self.get_account_stats(self.user_a_token)
         
-        headers_a = {"Authorization": f"Bearer {user_a_token}"}
-        response = requests.post(f"{BASE_URL}/tontines", json=tontine_data, headers=headers_a, timeout=10)
-        if response.status_code not in [200, 201]:
-            print(f"❌ Tontine creation failed: {response.status_code} - {response.text}")
-            return False
+        if success:
+            required_fields = ["active_tontines", "completed_tontines", "total_participations", "pending_invitations"]
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if not missing_fields:
+                self.log_test("Account Stats API - Empty State", True, 
+                    f"All required fields present: {data}")
+            else:
+                self.log_test("Account Stats API - Empty State", False, 
+                    f"Missing fields: {missing_fields}", data)
+        else:
+            self.log_test("Account Stats API - Empty State", False, f"API call failed: {data}")
+
+        # Step 4: Create a tontine as User A
+        print("\n🏦 Step 4: Create Tontine as User A")
+        success, data = self.create_tontine(self.user_a_token, "Admin Test Tontine")
         
-        tontine_id = response.json()["id"]
-        print(f"✅ Tontine created successfully with ID: {tontine_id}")
+        if success:
+            self.tontine_id = data.get("id")
+            self.log_test("Create Tontine", True, f"Tontine created with ID: {self.tontine_id}")
+        else:
+            self.log_test("Create Tontine", False, f"Tontine creation failed: {data}")
+            return
+
+        # Step 5: Test GET /api/account/check-deletion for User A (should be blocked)
+        print("\n🚫 Step 5: Test Account Deletion Check - User A (Admin)")
+        success, data = self.check_account_deletion(self.user_a_token)
         
-        # Step 4: Get User A's tontine list to verify tontine_id
-        print("\n4️⃣ Getting User A's tontine list...")
-        response = requests.get(f"{BASE_URL}/tontines", headers=headers_a, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Failed to get tontines: {response.status_code} - {response.text}")
-            return False
+        if success:
+            can_delete = data.get("can_delete", True)
+            blockers = data.get("blockers", [])
+            
+            if not can_delete and len(blockers) > 0:
+                admin_blocker = any(b.get("type") == "admin_tontine" for b in blockers)
+                if admin_blocker:
+                    self.log_test("Account Deletion Check - Admin Blocked", True, 
+                        f"Correctly blocked admin from deletion. Blockers: {len(blockers)}")
+                else:
+                    self.log_test("Account Deletion Check - Admin Blocked", False, 
+                        f"Blocked but no admin_tontine blocker found", data)
+            else:
+                self.log_test("Account Deletion Check - Admin Blocked", False, 
+                    f"Admin should be blocked but can_delete={can_delete}", data)
+        else:
+            self.log_test("Account Deletion Check - Admin Blocked", False, f"API call failed: {data}")
+
+        # Step 6: Register User B (member_del@test.com)
+        print("\n📝 Step 6: Register User B (Member)")
+        success, data = self.register_user(
+            self.user_b_email, 
+            "Member Deletion", 
+            "+33600111002", 
+            "test123456"
+        )
         
-        tontines = response.json()
-        if not tontines or tontines[0]["id"] != tontine_id:
-            print(f"❌ Tontine ID mismatch or no tontines found")
-            return False
+        if success:
+            self.user_b_data = data
+            self.log_test("Register User B", True, f"User registered successfully")
+        else:
+            self.log_test("Register User B", False, f"Registration failed: {data}")
+            return
+
+        # Step 7: Login User B
+        print("\n🔐 Step 7: Login User B")
+        success, data = self.login_user(self.user_b_email, "test123456")
         
-        print(f"✅ Tontine list retrieved, confirmed ID: {tontine_id}")
+        if success and "access_token" in data:
+            self.user_b_token = data["access_token"]
+            self.log_test("Login User B", True, "Login successful")
+        else:
+            self.log_test("Login User B", False, f"Login failed: {data}")
+            return
+
+        # Step 8: Test GET /api/account/check-deletion for User B (should be allowed)
+        print("\n✅ Step 8: Test Account Deletion Check - User B (Member)")
+        success, data = self.check_account_deletion(self.user_b_token)
         
-        # Step 5: Register User B
-        print("\n5️⃣ Registering User B...")
-        user_b_data = {
-            "email": user_b_email,
-            "full_name": "Bob Diouf",
-            "phone": "+33600000002",
-            "password": "test123456"
-        }
+        if success:
+            can_delete = data.get("can_delete", False)
+            blockers = data.get("blockers", [])
+            
+            if can_delete and len(blockers) == 0:
+                self.log_test("Account Deletion Check - Member Allowed", True, 
+                    f"Member correctly allowed to delete account")
+            else:
+                self.log_test("Account Deletion Check - Member Allowed", False, 
+                    f"Member should be allowed but can_delete={can_delete}, blockers={len(blockers)}", data)
+        else:
+            self.log_test("Account Deletion Check - Member Allowed", False, f"API call failed: {data}")
+
+        # Step 9: Test POST /api/account/delete with wrong password
+        print("\n🔒 Step 9: Test Account Deletion - Wrong Password")
+        success, data = self.delete_account(self.user_b_token, "wrongpassword", True)
         
-        response = requests.post(f"{BASE_URL}/auth/register", json=user_b_data, timeout=10)
-        if response.status_code not in [200, 201]:
-            print(f"❌ User B registration failed: {response.status_code} - {response.text}")
-            return False
+        if not success and ("400" in str(data) or "Mot de passe incorrect" in str(data)):
+            self.log_test("Account Deletion - Wrong Password", True, 
+                f"Correctly rejected wrong password")
+        else:
+            self.log_test("Account Deletion - Wrong Password", False, 
+                f"Should have rejected wrong password but got: {data}")
+
+        # Step 10: Test POST /api/account/delete with correct password and confirm=true
+        print("\n🗑️ Step 10: Test Account Deletion - Correct Password")
+        success, data = self.delete_account(self.user_b_token, "test123456", True)
         
-        user_b_token = response.json()["access_token"]
-        print(f"✅ User B registered successfully")
+        if success and data.get("success"):
+            self.log_test("Account Deletion - Success", True, 
+                f"Account deleted successfully: {data.get('message', '')}")
+        else:
+            self.log_test("Account Deletion - Success", False, 
+                f"Account deletion failed: {data}")
+
+        # Step 11: Try to login as User B again (should fail)
+        print("\n🚫 Step 11: Verify User B Cannot Login After Deletion")
+        success, data = self.login_user(self.user_b_email, "test123456")
         
-        # Step 6: As User A, send invitation to User B's email
-        print("\n6️⃣ Sending invitation from User A to User B...")
-        invitation_data = {
-            "tontine_id": tontine_id,
-            "invited_email": user_b_email
-        }
+        if not success:
+            self.log_test("Login After Deletion - Blocked", True, 
+                f"Correctly blocked login after account deletion")
+        else:
+            self.log_test("Login After Deletion - Blocked", False, 
+                f"Should have blocked login but succeeded: {data}")
+
+        # Step 12: Test Account Stats for User A after creating tontine
+        print("\n📊 Step 12: Test Account Stats - User A (With Tontine)")
+        success, data = self.get_account_stats(self.user_a_token)
         
-        response = requests.post(f"{BASE_URL}/invitations", json=invitation_data, headers=headers_a, timeout=10)
-        if response.status_code not in [200, 201]:
-            print(f"❌ Invitation sending failed: {response.status_code} - {response.text}")
-            return False
+        if success:
+            active_tontines = data.get("active_tontines", 0)
+            total_participations = data.get("total_participations", 0)
+            
+            if active_tontines >= 1 and total_participations >= 1:
+                self.log_test("Account Stats API - With Data", True, 
+                    f"Stats updated correctly: active={active_tontines}, total={total_participations}")
+            else:
+                self.log_test("Account Stats API - With Data", False, 
+                    f"Stats not updated correctly: {data}")
+        else:
+            self.log_test("Account Stats API - With Data", False, f"API call failed: {data}")
+
+        # Print final summary
+        self.print_summary()
+
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 70)
+        print("📋 TEST SUMMARY")
+        print("=" * 70)
         
-        invitation_id = response.json()["id"]
-        print(f"✅ Invitation sent successfully with ID: {invitation_id}")
+        passed = sum(1 for result in self.test_results if result['success'])
+        total = len(self.test_results)
         
-        # Step 7: Login as User B (already have token from registration)
-        print("\n7️⃣ User B token obtained from registration")
+        print(f"Total Tests: {total}")
+        print(f"Passed: {passed}")
+        print(f"Failed: {total - passed}")
+        print(f"Success Rate: {(passed/total)*100:.1f}%")
         
-        # Step 8: Call GET /api/invitations/received/enriched with User B's token
-        print("\n8️⃣ Testing enriched invitations endpoint...")
-        headers_b = {"Authorization": f"Bearer {user_b_token}"}
-        response = requests.get(f"{BASE_URL}/invitations/received/enriched", headers=headers_b, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Enriched invitations endpoint failed: {response.status_code} - {response.text}")
-            return False
+        if total - passed > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result['success']:
+                    print(f"  - {result['test']}: {result['details']}")
         
-        enriched_invitations = response.json()
-        if not enriched_invitations:
-            print(f"❌ No enriched invitations returned")
-            return False
+        print("\n🎯 ACCOUNT DELETION & STATS API TESTING COMPLETED")
         
-        invitation = enriched_invitations[0]
-        print(f"✅ Enriched invitations endpoint working")
-        
-        # Step 9: Verify the response contains enriched data
-        print("\n9️⃣ Verifying enriched invitation data structure...")
-        
-        # Check basic invitation fields
-        required_fields = ["id", "tontine_name", "inviter_name", "status", "created_at"]
-        for field in required_fields:
-            if field not in invitation:
-                print(f"❌ Missing required field: {field}")
-                return False
-        
-        # Verify status is "pending"
-        if invitation["status"] != "pending":
-            print(f"❌ Expected status 'pending', got: {invitation['status']}")
-            return False
-        
-        # Check tontine_details object
-        if "tontine_details" not in invitation:
-            print(f"❌ Missing tontine_details object")
-            return False
-        
-        tontine_details = invitation["tontine_details"]
-        required_tontine_fields = [
-            "name", "contribution_amount", "currency", "frequency", 
-            "max_members", "current_members", "total_pot", "start_date", 
-            "status", "member_names"
-        ]
-        
-        for field in required_tontine_fields:
-            if field not in tontine_details:
-                print(f"❌ Missing tontine_details field: {field}")
-                return False
-        
-        print(f"✅ All required fields present in enriched data")
-        
-        # Step 10: Verify total_pot calculation
-        print("\n🔟 Verifying total_pot calculation...")
-        expected_total_pot = tontine_details["contribution_amount"] * tontine_details["max_members"]
-        actual_total_pot = tontine_details["total_pot"]
-        
-        if actual_total_pot != expected_total_pot:
-            print(f"❌ Total pot calculation incorrect. Expected: {expected_total_pot}, Got: {actual_total_pot}")
-            return False
-        
-        if actual_total_pot != 25000:  # 5000 * 5 = 25000
-            print(f"❌ Total pot should be 25000, got: {actual_total_pot}")
-            return False
-        
-        print(f"✅ Total pot calculation correct: {actual_total_pot}")
-        
-        # Step 11: As User B, accept the invitation
-        print("\n1️⃣1️⃣ Accepting invitation as User B...")
-        response = requests.post(f"{BASE_URL}/invitations/{invitation_id}/accept", headers=headers_b, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Invitation acceptance failed: {response.status_code} - {response.text}")
-            return False
-        
-        print(f"✅ Invitation accepted successfully")
-        
-        # Step 12: Call enriched endpoint again and verify status is "accepted"
-        print("\n1️⃣2️⃣ Verifying invitation status changed to 'accepted'...")
-        response = requests.get(f"{BASE_URL}/invitations/received/enriched", headers=headers_b, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Enriched invitations endpoint failed after acceptance: {response.status_code} - {response.text}")
-            return False
-        
-        enriched_invitations = response.json()
-        if not enriched_invitations:
-            print(f"❌ No enriched invitations returned after acceptance")
-            return False
-        
-        invitation = enriched_invitations[0]
-        if invitation["status"] != "accepted":
-            print(f"❌ Expected status 'accepted', got: {invitation['status']}")
-            return False
-        
-        print(f"✅ Invitation status correctly updated to 'accepted'")
-        
-        # Step 13: Verify the original GET /api/invitations/received still works
-        print("\n1️⃣3️⃣ Verifying original invitations endpoint still works...")
-        response = requests.get(f"{BASE_URL}/invitations/received", headers=headers_b, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Original invitations endpoint failed: {response.status_code} - {response.text}")
-            return False
-        
-        original_invitations = response.json()
-        if not original_invitations:
-            print(f"❌ No invitations returned from original endpoint")
-            return False
-        
-        print(f"✅ Original invitations endpoint still working")
-        
-        print("\n🎉 ALL TESTS PASSED!")
-        print("=" * 50)
-        print("✅ Enriched Invitations API is fully functional")
-        print(f"✅ Invitation flow: pending → accepted")
-        print(f"✅ Total pot calculation: {actual_total_pot}")
-        print(f"✅ All required fields present")
-        print(f"✅ Backward compatibility maintained")
-        
-        return True
-        
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Network error: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        return False
+        # Return success status for main agent
+        return passed == total
 
 if __name__ == "__main__":
-    success = test_enriched_invitations_api()
+    tester = TontineClubTester()
+    success = tester.run_comprehensive_test()
     sys.exit(0 if success else 1)
