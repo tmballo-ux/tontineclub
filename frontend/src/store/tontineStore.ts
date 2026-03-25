@@ -109,6 +109,24 @@ export interface EnrichedTontine extends Tontine {
   is_creator: boolean;
 }
 
+export interface TontineDetailsForInvitation {
+  name: string;
+  contribution_amount: number;
+  currency: string;
+  frequency: string;
+  max_members: number;
+  current_members: number;
+  total_pot: number;
+  start_date: string;
+  status: string;
+  description?: string;
+  member_names: string[];
+}
+
+export interface EnrichedInvitation extends Invitation {
+  tontine_details: TontineDetailsForInvitation | null;
+}
+
 export interface Dashboard {
   active_tontines_count: number;
   total_tontines_count: number;
@@ -122,6 +140,7 @@ export interface Dashboard {
 interface TontineState {
   tontines: Tontine[];
   enrichedTontines: EnrichedTontine[];
+  enrichedInvitations: EnrichedInvitation[];
   currentTontine: Tontine | null;
   invitations: Invitation[];
   members: Member[];
@@ -142,6 +161,7 @@ interface TontineState {
   startTontine: (id: string) => Promise<void>;
   
   fetchInvitations: () => Promise<void>;
+  fetchEnrichedInvitations: () => Promise<void>;
   sendInvitation: (tontineId: string, email: string) => Promise<void>;
   acceptInvitation: (id: string) => Promise<void>;
   rejectInvitation: (id: string) => Promise<void>;
@@ -169,6 +189,7 @@ interface TontineState {
 export const useTontineStore = create<TontineState>((set, get) => ({
   tontines: [],
   enrichedTontines: [],
+  enrichedInvitations: [],
   currentTontine: null,
   invitations: [],
   members: [],
@@ -289,6 +310,19 @@ export const useTontineStore = create<TontineState>((set, get) => ({
       set({ invitations: response.data });
     } catch (error) {
       console.error('Error fetching invitations:', error);
+    }
+  },
+
+  fetchEnrichedInvitations: async () => {
+    try {
+      set({ isLoading: true });
+      const response = await axios.get(`${API_URL}/api/invitations/received/enriched`, {
+        headers: getAuthHeader(),
+      });
+      set({ enrichedInvitations: response.data, isLoading: false });
+    } catch (error) {
+      console.error('Error fetching enriched invitations:', error);
+      set({ isLoading: false });
     }
   },
 

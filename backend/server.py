@@ -577,6 +577,46 @@ async def get_received_invitations(current_user: dict = Depends(get_current_user
     }).sort("created_at", -1).to_list(1000)
     return [Invitation(**inv) for inv in invitations]
 
+@api_router.get("/invitations/received/enriched")
+async def get_received_invitations_enriched(current_user: dict = Depends(get_current_user)):
+    """Get enriched invitations with full tontine details."""
+    invitations = await db.invitations.find({
+        "invited_email": current_user["email"]
+    }).sort("created_at", -1).to_list(1000)
+    
+    enriched = []
+    for inv in invitations:
+        inv_data = {k: v for k, v in inv.items() if k != "_id"}
+        
+        # Get tontine details
+        tontine = await db.tontines.find_one({"id": inv["tontine_id"]})
+        tontine_details = None
+        if tontine:
+            total_pot = tontine["contribution_amount"] * tontine["max_members"]
+            
+            # Get members list
+            members = await db.tontine_members.find({"tontine_id": tontine["id"]}).to_list(100)
+            member_names = [m["user_name"] for m in members]
+            
+            tontine_details = {
+                "name": tontine["name"],
+                "contribution_amount": tontine["contribution_amount"],
+                "currency": tontine.get("currency", "XOF"),
+                "frequency": tontine["frequency"],
+                "max_members": tontine["max_members"],
+                "current_members": tontine.get("current_members", 1),
+                "total_pot": total_pot,
+                "start_date": tontine["start_date"].isoformat() if hasattr(tontine["start_date"], 'isoformat') else str(tontine["start_date"]),
+                "status": tontine["status"],
+                "description": tontine.get("description"),
+                "member_names": member_names,
+            }
+        
+        inv_data["tontine_details"] = tontine_details
+        enriched.append(inv_data)
+    
+    return enriched
+
 @api_router.get("/invitations/sent/{tontine_id}", response_model=List[Invitation])
 async def get_sent_invitations(tontine_id: str, current_user: dict = Depends(get_current_user)):
     tontine = await db.tontines.find_one({"id": tontine_id})
