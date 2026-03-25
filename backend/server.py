@@ -951,15 +951,100 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
             })
             pending_confirmations += announced
     
-    # Get recent tontines
-    recent_tontines = await db.tontines.find({"id": {"$in": tontine_ids}}).sort("created_at", -1).limit(5).to_list(5)
+    # Calculate financial summary
+    total_contributed = 0
+    total_received = 0
+    
+    # Get all contributions made by user (confirmed)
+    user_contributions = await db.contributions.find({
+        "member_id": current_user["id"],
+        "status": PaymentStatus.CONFIRMED
+    }).to_list(10000)
+    
+    for contrib in user_contributions:
+        cycle = await db.cycles.find_one({"id": contrib["cycle_id"]})
+        if cycle:
+            tontine = await db.tontines.find_one({"id": cycle["tontine_id"]})
+            if tontine:
+                total_contributed += tontine["contribution_amount"]
+    
+    # Get all cycles where user was beneficiary and completed
+    beneficiary_cycles = await db.cycles.find({
+        "beneficiary_id": current_user["id"],
+        "is_completed": True
+    }).to_list(1000)
+    
+    for cycle in beneficiary_cycles:
+        tontine = await db.tontines.find_one({"id": cycle["tontine_id"]})
+        if tontine:
+            # Count confirmed contributions for this cycle
+            confirmed_count = await db.contributions.count_documents({
+                "cycle_id": cycle["id"],
+                "status": PaymentStatus.CONFIRMED
+            })
+            total_received += tontine["contribution_amount"] * confirmed_count
+    
+    # Get recent tontines with more details
+    recent_tontines_raw = await db.tontines.find({"id": {"$in": tontine_ids}}).sort("created_at", -1).limit(5).to_list(5)
+    
+    recent_tontines = []
+    for t in recent_tontines_raw:
+        # Get user's position in beneficiary order
+        member = await db.tontine_members.find_one({
+            "tontine_id": t["id"],
+            "user_id": current_user["id"]
+        })
+        user_position = member.get("beneficiary_order", 0) if member else 0
+        
+        # Get current cycle info
+        current_cycle = await db.cycles.find_one({
+            "tontine_id": t["id"],
+            "is_current": True
+        })
+        
+        # Calculate next payment date
+        next_payment_date = None
+        if current_cycle:
+            next_payment_date = current_cycle["end_date"]
+        elif t["status"] == TontineStatus.DRAFT:
+            next_payment_date = t["start_date"]
+        
+        # Calculate total pot
+        total_pot = t["contribution_amount"] * t["max_members"]
+        
+        # Create clean tontine data without MongoDB ObjectId
+        tontine_data = {
+            "id": t["id"],
+            "name": t["name"],
+            "contribution_amount": t["contribution_amount"],
+            "currency": t["currency"],
+            "frequency": t["frequency"],
+            "max_members": t["max_members"],
+            "current_members": t["current_members"],
+            "start_date": t["start_date"],
+            "description": t.get("description"),
+            "status": t["status"],
+            "creator_id": t["creator_id"],
+            "created_at": t["created_at"],
+            "user_position": user_position,
+            "total_pot": total_pot,
+            "next_payment_date": next_payment_date,
+            "current_cycle_number": current_cycle["cycle_number"] if current_cycle else 0
+        }
+        recent_tontines.append(tontine_data)
     
     return {
         "active_tontines_count": active_tontines,
+        "total_tontines_count": len(tontine_ids),
         "pending_invitations_count": pending_invitations,
         "next_beneficiary": next_beneficiary,
         "pending_confirmations_count": pending_confirmations,
-        "recent_tontines": [Tontine(**t) for t in recent_tontines]
+        "financial_summary": {
+            "total_contributed": total_contributed,
+            "total_received": total_received,
+            "balance": total_received - total_contributed
+        },
+        "recent_tontines": recent_tontines
     }
 
 # ===================== HISTORY ENDPOINT =====================

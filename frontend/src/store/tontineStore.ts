@@ -85,12 +85,27 @@ export interface Notification {
   created_at: string;
 }
 
+export interface FinancialSummary {
+  total_contributed: number;
+  total_received: number;
+  balance: number;
+}
+
+export interface DashboardTontine extends Tontine {
+  user_position: number;
+  total_pot: number;
+  next_payment_date: string | null;
+  current_cycle_number: number;
+}
+
 export interface Dashboard {
   active_tontines_count: number;
+  total_tontines_count: number;
   pending_invitations_count: number;
   next_beneficiary: { tontine_name: string; cycle_number: number } | null;
   pending_confirmations_count: number;
-  recent_tontines: Tontine[];
+  financial_summary: FinancialSummary;
+  recent_tontines: DashboardTontine[];
 }
 
 interface TontineState {

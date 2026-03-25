@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-BASE_URL = "https://tontine-app-10.preview.emergentagent.com/api"
+BASE_URL = "https://tontine-dashboard-1.preview.emergentagent.com/api"
 
 class AdditionalAPITests:
     def __init__(self):

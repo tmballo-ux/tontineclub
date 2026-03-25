@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
 TontineClub Backend API Test Suite
-Comprehensive testing of all backend endpoints following the specified flows.
+Focus: Dashboard API with Financial Summary Testing
 """
 
 import requests
 import json
 import sys
+import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import time
 
 # Base URL for testing - using the EXPO_PUBLIC_BACKEND_URL
-BASE_URL = "https://tontine-app-10.preview.emergentagent.com/api"
+BASE_URL = "https://tontine-dashboard-1.preview.emergentagent.com/api"
 
 class TontineAPITest:
     def __init__(self):
@@ -693,6 +694,187 @@ class TontineAPITest:
         # Summary
         self.print_summary()
     
+    def test_dashboard_comprehensive(self):
+        """Comprehensive dashboard API testing as requested in review"""
+        print("\n🎯 DASHBOARD API COMPREHENSIVE TESTING")
+        print("=" * 50)
+        
+        # Step 1: Register a new user
+        unique_id = str(uuid.uuid4())[:8]
+        test_user = {
+            "email": f"dashboard_test_{unique_id}@tontineclub.com",
+            "full_name": f"Dashboard Tester {unique_id}",
+            "phone": f"+1514555{unique_id[:4]}",
+            "password": "DashboardTest123!"
+        }
+        
+        try:
+            response = requests.post(f"{self.base_url}/auth/register", json=test_user)
+            if response.status_code != 200:
+                self.log_result("Dashboard Test - User Registration", False, f"Status: {response.status_code}")
+                return False
+            
+            user_data = response.json()
+            token = user_data["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+            self.log_result("Dashboard Test - User Registration", True, f"User {test_user['email']} registered")
+            
+        except Exception as e:
+            self.log_result("Dashboard Test - User Registration", False, f"Exception: {str(e)}")
+            return False
+        
+        # Step 2: Test dashboard empty state
+        try:
+            response = requests.get(f"{self.base_url}/dashboard", headers=headers)
+            if response.status_code != 200:
+                self.log_result("Dashboard API - Empty State", False, f"Status: {response.status_code}")
+                return False
+            
+            data = response.json()
+            
+            # Check all required fields are present
+            required_fields = [
+                "active_tontines_count",
+                "total_tontines_count", 
+                "pending_invitations_count",
+                "next_beneficiary",
+                "pending_confirmations_count",
+                "financial_summary",
+                "recent_tontines"
+            ]
+            
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                self.log_result("Dashboard API - Required Fields", False, f"Missing: {missing_fields}")
+                return False
+            
+            # Check financial_summary structure
+            financial_summary = data.get("financial_summary", {})
+            required_financial_fields = ["total_contributed", "total_received", "balance"]
+            missing_financial = [field for field in required_financial_fields if field not in financial_summary]
+            
+            if missing_financial:
+                self.log_result("Dashboard API - Financial Summary Structure", False, f"Missing: {missing_financial}")
+                return False
+            
+            # Verify empty state values
+            if (data["active_tontines_count"] != 0 or data["total_tontines_count"] != 0 or 
+                data["pending_invitations_count"] != 0 or data["next_beneficiary"] is not None or
+                data["pending_confirmations_count"] != 0):
+                self.log_result("Dashboard API - Empty State Values", False, f"Non-zero values in empty state")
+                return False
+            
+            # Check financial summary empty state
+            if (financial_summary["total_contributed"] != 0 or financial_summary["total_received"] != 0 or 
+                financial_summary["balance"] != 0):
+                self.log_result("Dashboard API - Financial Summary Empty", False, f"Non-zero financial values")
+                return False
+            
+            # Check recent_tontines is empty array
+            if not isinstance(data["recent_tontines"], list) or len(data["recent_tontines"]) != 0:
+                self.log_result("Dashboard API - Recent Tontines Empty", False, f"Expected empty array")
+                return False
+            
+            self.log_result("Dashboard API - Empty State", True, "All fields correct for empty state")
+            
+        except Exception as e:
+            self.log_result("Dashboard API - Empty State", False, f"Exception: {str(e)}")
+            return False
+        
+        # Step 3: Create a tontine
+        tontine_data = {
+            "name": f"Dashboard Test Tontine {unique_id}",
+            "contribution_amount": 150.0,
+            "currency": "XOF",
+            "frequency": "monthly",
+            "max_members": 4,
+            "start_date": (datetime.utcnow() + timedelta(days=10)).isoformat(),
+            "description": "Tontine pour tester le dashboard"
+        }
+        
+        try:
+            response = requests.post(f"{self.base_url}/tontines", json=tontine_data, headers=headers)
+            if response.status_code != 200:
+                self.log_result("Dashboard Test - Create Tontine", False, f"Status: {response.status_code}")
+                return False
+            
+            tontine = response.json()
+            self.log_result("Dashboard Test - Create Tontine", True, f"Tontine '{tontine['name']}' created")
+            
+        except Exception as e:
+            self.log_result("Dashboard Test - Create Tontine", False, f"Exception: {str(e)}")
+            return False
+        
+        # Step 4: Test dashboard with tontine (enriched data)
+        try:
+            response = requests.get(f"{self.base_url}/dashboard", headers=headers)
+            if response.status_code != 200:
+                self.log_result("Dashboard API - With Tontine", False, f"Status: {response.status_code}")
+                return False
+            
+            data = response.json()
+            
+            # Check that total_tontines_count increased
+            if data["total_tontines_count"] != 1:
+                self.log_result("Dashboard API - Tontine Count", False, f"Expected 1, got {data['total_tontines_count']}")
+                return False
+            
+            # Check recent_tontines contains the created tontine
+            recent_tontines = data["recent_tontines"]
+            if not isinstance(recent_tontines, list) or len(recent_tontines) != 1:
+                self.log_result("Dashboard API - Recent Tontines Count", False, f"Expected 1, got {len(recent_tontines)}")
+                return False
+            
+            # Check enriched tontine data
+            tontine_data = recent_tontines[0]
+            required_enriched_fields = [
+                "user_position",
+                "total_pot", 
+                "next_payment_date",
+                "current_cycle_number"
+            ]
+            
+            missing_enriched = [field for field in required_enriched_fields if field not in tontine_data]
+            if missing_enriched:
+                self.log_result("Dashboard API - Enriched Fields", False, f"Missing: {missing_enriched}")
+                return False
+            
+            # Verify enriched field values
+            if tontine_data["user_position"] != 1:  # Creator should be position 1
+                self.log_result("Dashboard API - User Position", False, f"Expected 1, got {tontine_data['user_position']}")
+                return False
+            
+            expected_total_pot = tontine["contribution_amount"] * tontine["max_members"]
+            if tontine_data["total_pot"] != expected_total_pot:
+                self.log_result("Dashboard API - Total Pot", False, f"Expected {expected_total_pot}, got {tontine_data['total_pot']}")
+                return False
+            
+            if tontine_data["current_cycle_number"] != 0:  # Should be 0 for draft tontine
+                self.log_result("Dashboard API - Current Cycle", False, f"Expected 0, got {tontine_data['current_cycle_number']}")
+                return False
+            
+            self.log_result("Dashboard API - With Tontine", True, "All enriched fields present and correct")
+            
+        except Exception as e:
+            self.log_result("Dashboard API - With Tontine", False, f"Exception: {str(e)}")
+            return False
+        
+        # Step 5: Test authentication requirement
+        try:
+            response = requests.get(f"{self.base_url}/dashboard")  # No headers
+            if response.status_code in [401, 403]:  # Both are acceptable for missing auth
+                self.log_result("Dashboard API - Authentication Required", True, f"Correctly requires auth (status: {response.status_code})")
+            else:
+                self.log_result("Dashboard API - Authentication Required", False, f"Expected 401/403, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Dashboard API - Authentication Required", False, f"Exception: {str(e)}")
+            return False
+        
+        print("✅ Dashboard API comprehensive testing completed successfully!")
+        return True
+
     def print_summary(self):
         """Print test summary"""
         print("\n" + "=" * 60)
@@ -720,4 +902,15 @@ if __name__ == "__main__":
     print("=" * 50)
     
     tester = TontineAPITest()
-    tester.run_all_tests()
+    
+    # Run focused dashboard testing as requested in review
+    print("🎯 RUNNING FOCUSED DASHBOARD API TESTING")
+    success = tester.test_dashboard_comprehensive()
+    
+    if success:
+        print("\n🎉 DASHBOARD API TESTING COMPLETED SUCCESSFULLY!")
+    else:
+        print("\n❌ DASHBOARD API TESTING FAILED!")
+    
+    # Print summary
+    tester.print_summary()
