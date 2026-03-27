@@ -37,6 +37,12 @@ security = HTTPBearer()
 # Create the main app
 app = FastAPI(title="TontineClub API", version="1.0.0")
 
+# Serve Play Store assets
+from fastapi.staticfiles import StaticFiles
+import os as _os
+if _os.path.exists("/app/backend/playstore_assets"):
+    app.mount("/api/assets", StaticFiles(directory="/app/backend/playstore_assets"), name="playstore_assets")
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
