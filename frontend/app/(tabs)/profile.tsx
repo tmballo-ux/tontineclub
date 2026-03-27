@@ -244,10 +244,10 @@ export default function ProfileScreen() {
         {/* Assistance / Légal */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Assistance et légal</Text>
-          <ActionRow icon="help-circle-outline" label="Centre d'aide" onPress={() => {}} />
+          <ActionRow icon="help-circle-outline" label="Centre d'aide" onPress={() => router.push('/legal/help')} />
           <ActionRow icon="document-text-outline" label="Conditions d'utilisation" onPress={() => router.push('/legal/terms')} />
           <ActionRow icon="shield-checkmark-outline" label="Politique de confidentialité" onPress={() => router.push('/legal/privacy')} />
-          <ActionRow icon="chatbubble-ellipses-outline" label="Nous contacter" onPress={() => {}} />
+          <ActionRow icon="chatbubble-ellipses-outline" label="Nous contacter" onPress={() => router.push('/legal/contact')} />
         </View>
 
         {/* Logout */}

@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 # Base URL from frontend .env
-BASE_URL = "https://tontine-dashboard-1.preview.emergentagent.com/api"
+BASE_URL = "https://club-tontine.preview.emergentagent.com/api"
 
 def test_enriched_invitations_detailed():
     """Test the enriched invitations endpoint with detailed response verification."""
