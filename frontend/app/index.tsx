@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
@@ -26,9 +26,11 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>TC</Text>
-          </View>
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>TontineClub</Text>
           <Text style={styles.tagline}>{t('welcome.tagline')}</Text>
         </View>
@@ -92,8 +94,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between', paddingVertical: 32 },
   logoContainer: { alignItems: 'center', marginTop: 40 },
-  logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  logoText: { fontSize: 36, fontWeight: 'bold', color: colors.white },
+  logoImage: { width: 120, height: 120, borderRadius: 28, marginBottom: 16 },
   appName: { fontSize: 32, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
   tagline: { fontSize: 16, color: colors.textSecondary, textAlign: 'center' },
   features: { gap: 16 },

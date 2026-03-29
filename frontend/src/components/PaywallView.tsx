@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,14 +62,11 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Icon */}
         <View style={styles.headerIcon}>
-          <LinearGradient
-            colors={['#2563EB', '#7C3AED']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.iconGradient}
-          >
-            <Ionicons name="diamond" size={36} color="#FFFFFF" />
-          </LinearGradient>
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         <Text style={styles.title}>{t('paywall.title')}</Text>
@@ -151,7 +149,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
   headerIcon: { alignItems: 'center', marginTop: 24, marginBottom: 20 },
-  iconGradient: { width: 72, height: 72, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  logoImage: { width: 88, height: 88, borderRadius: 22 },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center', lineHeight: 34, letterSpacing: -0.5, marginBottom: 12 },
   subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 8 },
   offerCard: { borderRadius: 20, padding: 20, marginBottom: 28, alignItems: 'center', borderWidth: 2, borderColor: '#93C5FD' },
