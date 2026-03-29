@@ -22,6 +22,15 @@ import { colors, shadows } from '@/src/theme/colors';
 import axios from 'axios';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+
+const getStoredToken = async (): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    return AsyncStorage.getItem('token');
+  }
+  return SecureStore.getItemAsync('token');
+};
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
@@ -55,7 +64,7 @@ export default function ProfileScreen() {
 
   const fetchStats = async () => {
     try {
-      const storedToken = token || await AsyncStorage.getItem('auth_token');
+      const storedToken = token || await getStoredToken();
       const res = await axios.get(`${API_URL}/api/account/stats`, {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
@@ -86,7 +95,7 @@ export default function ProfileScreen() {
   const handleDeleteCheck = async () => {
     setDeleteLoading(true);
     try {
-      const storedToken = token || await AsyncStorage.getItem('auth_token');
+      const storedToken = token || await getStoredToken();
       const res = await axios.get(`${API_URL}/api/account/check-deletion`, {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
@@ -101,7 +110,7 @@ export default function ProfileScreen() {
     if (!deletePassword || !deleteConfirmed) return;
     setDeleteLoading(true);
     try {
-      const storedToken = token || await AsyncStorage.getItem('auth_token');
+      const storedToken = token || await getStoredToken();
       await axios.post(`${API_URL}/api/account/delete`, {
         password: deletePassword, confirm: true,
       }, { headers: { Authorization: `Bearer ${storedToken}` } });

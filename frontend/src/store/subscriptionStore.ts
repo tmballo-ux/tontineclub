@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -20,7 +22,12 @@ export interface SubscriptionState {
 }
 
 const getAuthHeader = async () => {
-  const token = await AsyncStorage.getItem('token');
+  let token: string | null = null;
+  if (Platform.OS === 'web') {
+    token = await AsyncStorage.getItem('token');
+  } else {
+    token = await SecureStore.getItemAsync('token');
+  }
   return { Authorization: `Bearer ${token}` };
 };
 

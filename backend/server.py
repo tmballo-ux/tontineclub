@@ -53,6 +53,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ===================== HEALTH CHECK =====================
+@api_router.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "TontineClub API", "version": "1.0.0"}
+
 # ===================== ENUMS =====================
 class InvitationStatus(str, Enum):
     PENDING = "pending"
