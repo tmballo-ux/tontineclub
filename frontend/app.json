@@ -70,9 +70,6 @@
         "projectId": "edbf1fbc-7e86-4bfc-897d-eeef9d2b73a"
       }
     },
-    "owner": "tontineclub",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    }
+    "owner": "tontineclub"
   }
 }
