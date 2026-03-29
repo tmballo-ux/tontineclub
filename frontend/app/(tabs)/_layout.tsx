@@ -5,6 +5,7 @@ import { colors } from '@/src/theme/colors';
 import { useTontineStore } from '@/src/store/tontineStore';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import PaywallView from '@/src/components/PaywallView';
 
@@ -12,6 +13,7 @@ export default function TabsLayout() {
   const { unreadCount } = useTontineStore();
   const { isAuthenticated } = useAuthStore();
   const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -19,22 +21,19 @@ export default function TabsLayout() {
     }
   }, [isAuthenticated]);
 
-  // Show loading while checking subscription
   if (isAuthenticated && !isChecked) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Vérification de l'abonnement...</Text>
+        <Text style={styles.loadingText}>{t('profile.checkingSubscription')}</Text>
       </View>
     );
   }
 
-  // Show paywall if no access
   if (isAuthenticated && isChecked && !hasAccess) {
     return (
       <PaywallView
         onTrialActivated={() => {
-          // Re-fetch subscription status - this will re-render with hasAccess = true
           fetchStatus();
         }}
       />
@@ -63,7 +62,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -72,7 +71,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="tontines"
         options={{
-          title: 'Tontines',
+          title: t('tabs.tontines'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size} color={color} />
           ),
@@ -81,7 +80,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="invitations"
         options={{
-          title: 'Invitations',
+          title: t('tabs.invitations'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="mail" size={size} color={color} />
           ),
@@ -90,7 +89,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Notifs',
+          title: t('tabs.notifications'),
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="notifications" size={size} color={color} />
@@ -108,7 +107,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

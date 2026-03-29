@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, EnrichedInvitation } from '@/src/store/tontineStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 
@@ -26,6 +27,7 @@ export default function InvitationsScreen() {
     rejectInvitation,
     isLoading,
   } = useTontineStore();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -118,9 +120,9 @@ export default function InvitationsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Invitations</Text>
+          <Text style={styles.title}>{t('invitations.title')}</Text>
           <Text style={styles.subtitle}>
-            {pendingInvitations.length} en attente
+            {pendingInvitations.length} {t('invitations.pending')}
           </Text>
         </View>
         {pendingInvitations.length > 0 && (
@@ -156,7 +158,7 @@ export default function InvitationsScreen() {
             color={activeTab === 'pending' ? colors.white : colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            En attente
+            {t('invitations.tabPending')}
           </Text>
           {pendingInvitations.length > 0 && (
             <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgeActive]}>
@@ -176,7 +178,7 @@ export default function InvitationsScreen() {
             color={activeTab === 'history' ? colors.white : colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
-            Historique
+            {t('invitations.tabHistory')}
           </Text>
           {historyInvitations.length > 0 && (
             <View style={[styles.tabBadge, activeTab === 'history' && styles.tabBadgeActive]}>
@@ -231,13 +233,22 @@ function InvitationCard({
   onReject,
   isActionLoading,
 }: InvitationCardProps) {
+  const { t, language } = useTranslation();
   const td = invitation.tontine_details;
   const isPending = invitation.status === 'pending';
-  const statusConfig = getInvStatusConfig(invitation.status);
+  const statusConfig = getInvStatusConfig(invitation.status, t);
+
+  const getDateLocale = () => {
+    switch (language) {
+      case 'en': return 'en-US';
+      case 'es': return 'es-ES';
+      default: return 'fr-FR';
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString('fr-FR', {
+      return new Date(dateStr).toLocaleDateString(getDateLocale(), {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -266,7 +277,7 @@ function InvitationCard({
           <Text style={styles.cardTontineName}>{invitation.tontine_name}</Text>
           <View style={styles.inviterRow}>
             <Ionicons name="person" size={12} color={colors.textSecondary} />
-            <Text style={styles.inviterText}>Invité par {invitation.inviter_name}</Text>
+            <Text style={styles.inviterText}>{t('invitations.invitedBy', { name: invitation.inviter_name })}</Text>
           </View>
           <Text style={styles.dateText}>
             {formatDate(invitation.created_at)}
@@ -297,11 +308,11 @@ function InvitationCard({
       <View style={styles.trustRow}>
         <View style={styles.trustChip}>
           <Ionicons name="shield-checkmark" size={12} color="#059669" />
-          <Text style={styles.trustChipText}>Paiements suivis</Text>
+          <Text style={styles.trustChipText}>{t('invitations.paymentsTracked')}</Text>
         </View>
         <View style={styles.trustChip}>
           <Ionicons name="eye" size={12} color="#2563EB" />
-          <Text style={styles.trustChipText}>Transparent</Text>
+          <Text style={styles.trustChipText}>{t('invitations.transparent')}</Text>
         </View>
       </View>
 
@@ -409,7 +420,7 @@ function InvitationCard({
                 activeOpacity={0.8}
               >
                 <Ionicons name="checkmark-circle" size={18} color={colors.white} />
-                <Text style={styles.acceptBtnText}>Accepter</Text>
+                <Text style={styles.acceptBtnText}>{t('invitations.accept')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.rejectBtn}
@@ -417,7 +428,7 @@ function InvitationCard({
                 activeOpacity={0.7}
               >
                 <Ionicons name="close-circle" size={18} color="#6B7280" />
-                <Text style={styles.rejectBtnText}>Refuser</Text>
+                <Text style={styles.rejectBtnText}>{t('invitations.reject')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -456,6 +467,7 @@ function InfoItem({ icon, color, bg, label, value }: { icon: string; color: stri
 // ============ EMPTY STATE ============
 
 function EmptyState({ tab }: { tab: TabType }) {
+  const { t } = useTranslation();
   const isHistory = tab === 'history';
   return (
     <View style={styles.emptyContainer}>
@@ -463,12 +475,10 @@ function EmptyState({ tab }: { tab: TabType }) {
         <Ionicons name={isHistory ? 'time-outline' : 'mail-outline'} size={48} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
-        {isHistory ? 'Aucun historique' : 'Aucune invitation pour le moment'}
+        {isHistory ? t('invitations.emptyHistory') : t('invitations.emptyPending')}
       </Text>
       <Text style={styles.emptySubtitle}>
-        {isHistory
-          ? 'Vos invitations traitées apparaîtront ici.'
-          : 'Vous recevrez ici les invitations à rejoindre des tontines de vos proches.'}
+        {isHistory ? t('invitations.emptyHistoryText') : t('invitations.emptyPendingText')}
       </Text>
     </View>
   );
@@ -476,14 +486,14 @@ function EmptyState({ tab }: { tab: TabType }) {
 
 // ============ HELPERS ============
 
-function getInvStatusConfig(status: string) {
+function getInvStatusConfig(status: string, t: (key: string) => string) {
   switch (status) {
     case 'pending':
-      return { label: 'En attente', color: '#D97706', bg: '#FEF3C7', bgLight: '#FEF3C7', icon: 'mail-unread' };
+      return { label: t('invitations.statusPending'), color: '#D97706', bg: '#FEF3C7', bgLight: '#FEF3C7', icon: 'mail-unread' };
     case 'accepted':
-      return { label: 'Acceptée', color: '#059669', bg: '#D1FAE5', bgLight: '#D1FAE5', icon: 'checkmark-circle' };
+      return { label: t('invitations.statusAccepted'), color: '#059669', bg: '#D1FAE5', bgLight: '#D1FAE5', icon: 'checkmark-circle' };
     case 'rejected':
-      return { label: 'Refusée', color: '#6B7280', bg: '#F3F4F6', bgLight: '#F3F4F6', icon: 'close-circle' };
+      return { label: t('invitations.statusRejected'), color: '#6B7280', bg: '#F3F4F6', bgLight: '#F3F4F6', icon: 'close-circle' };
     default:
       return { label: status, color: '#6B7280', bg: '#F3F4F6', bgLight: '#F3F4F6', icon: 'mail' };
   }

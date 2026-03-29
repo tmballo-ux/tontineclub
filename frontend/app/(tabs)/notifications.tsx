@@ -12,17 +12,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Notification } from '@/src/store/tontineStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 
 type FilterType = 'all' | 'unread' | 'invitations' | 'payments' | 'system';
 
-const FILTERS: { key: FilterType; label: string; icon: string }[] = [
-  { key: 'all', label: 'Toutes', icon: 'apps' },
-  { key: 'unread', label: 'Non lues', icon: 'ellipse' },
-  { key: 'invitations', label: 'Invitations', icon: 'mail' },
-  { key: 'payments', label: 'Paiements', icon: 'cash' },
-  { key: 'system', label: 'Système', icon: 'settings' },
-];
+const FILTER_ICONS: Record<FilterType, string> = {
+  all: 'apps',
+  unread: 'ellipse',
+  invitations: 'mail',
+  payments: 'cash',
+  system: 'settings',
+};
 
 const NOTIF_CATEGORIES: Record<string, FilterType> = {
   invitation_received: 'invitations',
@@ -41,7 +42,20 @@ const NOTIF_CATEGORIES: Record<string, FilterType> = {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { notifications, fetchNotifications, markAsRead, markAllAsRead, isLoading } = useTontineStore();
+  const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  const getNotifFilterLabel = (key: FilterType) => {
+    switch (key) {
+      case 'all': return t('notifications.filterAll');
+      case 'unread': return t('notifications.filterUnread');
+      case 'invitations': return t('notifications.filterInvitations');
+      case 'payments': return t('notifications.filterPayments');
+      case 'system': return t('notifications.filterSystem');
+    }
+  };
+
+  const FILTERS: FilterType[] = ['all', 'unread', 'invitations', 'payments', 'system'];
 
   const loadData = useCallback(async () => {
     await fetchNotifications();
@@ -156,31 +170,31 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
           <Text style={styles.headerSubtitle}>{unreadCount} non lue{unreadCount !== 1 ? 's' : ''}</Text>
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead}>
             <Ionicons name="checkmark-done" size={16} color={colors.primary} />
-            <Text style={styles.markAllText}>Tout lu</Text>
+            <Text style={styles.markAllText}>{t('notifications.markAllRead')}</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Filters */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContainer}>
-        {FILTERS.map((f) => (
+        {FILTERS.map((filterKey) => (
           <TouchableOpacity
-            key={f.key}
-            style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-            onPress={() => setActiveFilter(f.key)}
+            key={filterKey}
+            style={[styles.filterChip, activeFilter === filterKey && styles.filterChipActive]}
+            onPress={() => setActiveFilter(filterKey)}
             activeOpacity={0.7}
           >
-            <Ionicons name={f.icon as any} size={13} color={activeFilter === f.key ? colors.white : colors.textSecondary} />
-            <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
-            {filterCounts[f.key] > 0 && (
-              <View style={[styles.filterBadge, activeFilter === f.key && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, activeFilter === f.key && styles.filterBadgeTextActive]}>{filterCounts[f.key]}</Text>
+            <Ionicons name={FILTER_ICONS[filterKey] as any} size={13} color={activeFilter === filterKey ? colors.white : colors.textSecondary} />
+            <Text style={[styles.filterText, activeFilter === filterKey && styles.filterTextActive]}>{getNotifFilterLabel(filterKey)}</Text>
+            {filterCounts[filterKey] > 0 && (
+              <View style={[styles.filterBadge, activeFilter === filterKey && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeText, activeFilter === filterKey && styles.filterBadgeTextActive]}>{filterCounts[filterKey]}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -200,8 +214,8 @@ export default function NotificationsScreen() {
             <View style={styles.emptyIconWrap}>
               <Ionicons name="notifications-off-outline" size={48} color={colors.primary} />
             </View>
-            <Text style={styles.emptyTitle}>Aucune notification</Text>
-            <Text style={styles.emptySubtitle}>Les nouvelles invitations, rappels et mises à jour apparaîtront ici</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>{t('notifications.emptySubtitle')}</Text>
           </View>
         }
       />

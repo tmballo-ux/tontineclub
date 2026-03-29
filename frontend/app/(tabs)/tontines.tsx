@@ -12,31 +12,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, EnrichedTontine } from '@/src/store/tontineStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 
 type FilterType = 'all' | 'active' | 'draft' | 'completed';
 type SortType = 'date' | 'amount' | 'progress';
 
-const FILTERS: { key: FilterType; label: string; icon: string }[] = [
-  { key: 'all', label: 'Toutes', icon: 'grid' },
-  { key: 'active', label: 'Actives', icon: 'pulse' },
-  { key: 'draft', label: 'Brouillons', icon: 'document-text' },
-  { key: 'completed', label: 'Terminées', icon: 'checkmark-done' },
+const FILTERS: { key: FilterType; icon: string }[] = [
+  { key: 'all', icon: 'grid' },
+  { key: 'active', icon: 'pulse' },
+  { key: 'draft', icon: 'document-text' },
+  { key: 'completed', icon: 'checkmark-done' },
 ];
 
-const SORTS: { key: SortType; label: string }[] = [
-  { key: 'date', label: 'Date' },
-  { key: 'amount', label: 'Montant' },
-  { key: 'progress', label: 'Progression' },
+const SORTS: { key: SortType }[] = [
+  { key: 'date' },
+  { key: 'amount' },
+  { key: 'progress' },
 ];
 
 export default function TontinesScreen() {
   const router = useRouter();
   const { enrichedTontines, fetchEnrichedTontines, isLoading } = useTontineStore();
+  const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [activeSort, setActiveSort] = useState<SortType>('date');
   const [showSortMenu, setShowSortMenu] = useState(false);
+
+  const getFilterLabel = (key: FilterType) => {
+    switch (key) {
+      case 'all': return t('tontines.filterAll');
+      case 'active': return t('tontines.filterActive');
+      case 'draft': return t('tontines.filterDraft');
+      case 'completed': return t('tontines.filterCompleted');
+    }
+  };
+
+  const getSortLabel = (key: SortType) => {
+    switch (key) {
+      case 'date': return t('tontines.sortDate');
+      case 'amount': return t('tontines.sortAmount');
+      case 'progress': return t('tontines.sortProgress');
+    }
+  };
 
   const loadData = useCallback(async () => {
     await fetchEnrichedTontines();
@@ -115,7 +134,7 @@ export default function TontinesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Mes Tontines</Text>
+          <Text style={styles.title}>{t('tontines.myTontines')}</Text>
           <Text style={styles.subtitle}>{enrichedTontines.length} tontine{enrichedTontines.length !== 1 ? 's' : ''}</Text>
         </View>
         <TouchableOpacity
@@ -124,7 +143,7 @@ export default function TontinesScreen() {
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={20} color={colors.white} />
-          <Text style={styles.addButtonText}>Créer</Text>
+          <Text style={styles.addButtonText}>{t('tontines.create')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -156,7 +175,7 @@ export default function TontinesScreen() {
                   activeFilter === filter.key && styles.filterChipTextActive,
                 ]}
               >
-                {filter.label}
+                {getFilterLabel(filter.key)}
               </Text>
               {filterCounts[filter.key] > 0 && (
                 <View
@@ -192,7 +211,7 @@ export default function TontinesScreen() {
       {/* Sort Menu */}
       {showSortMenu && (
         <View style={styles.sortMenu}>
-          <Text style={styles.sortMenuTitle}>Trier par</Text>
+          <Text style={styles.sortMenuTitle}>{t('tontines.sortBy')}</Text>
           {SORTS.map((sort) => (
             <TouchableOpacity
               key={sort.key}
@@ -208,7 +227,7 @@ export default function TontinesScreen() {
                   activeSort === sort.key && styles.sortOptionTextActive,
                 ]}
               >
-                {sort.label}
+                {getSortLabel(sort.key)}
               </Text>
               {activeSort === sort.key && (
                 <Ionicons name="checkmark" size={18} color={colors.primary} />

@@ -11,17 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const FEATURES = [
-  { icon: 'wallet', title: 'Gestion illimitée', desc: 'Créez et gérez autant de tontines que vous voulez' },
-  { icon: 'shield-checkmark', title: 'Suivi sécurisé', desc: 'Traçabilité complète de toutes les transactions' },
-  { icon: 'people', title: 'Invitations illimitées', desc: 'Invitez tous vos proches à rejoindre vos groupes' },
-  { icon: 'notifications', title: 'Alertes intelligentes', desc: 'Rappels de paiement et notifications en temps réel' },
-  { icon: 'bar-chart', title: 'Tableau de bord', desc: "Vue d'ensemble financière de toutes vos tontines" },
-  { icon: 'lock-closed', title: 'Sécurité renforcée', desc: 'Données chiffrées et accès protégé' },
-];
 
 interface PaywallProps {
   onTrialActivated: () => void;
@@ -30,9 +22,19 @@ interface PaywallProps {
 export default function PaywallView({ onTrialActivated }: PaywallProps) {
   const { activateTrial } = useSubscriptionStore();
   const { logout } = useAuthStore();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const FEATURES = [
+    { icon: 'wallet', title: t('paywall.feat1Title'), desc: t('paywall.feat1Desc') },
+    { icon: 'shield-checkmark', title: t('paywall.feat2Title'), desc: t('paywall.feat2Desc') },
+    { icon: 'people', title: t('paywall.feat3Title'), desc: t('paywall.feat3Desc') },
+    { icon: 'notifications', title: t('paywall.feat4Title'), desc: t('paywall.feat4Desc') },
+    { icon: 'bar-chart', title: t('paywall.feat5Title'), desc: t('paywall.feat5Desc') },
+    { icon: 'lock-closed', title: t('paywall.feat6Title'), desc: t('paywall.feat6Desc') },
+  ];
 
   const handleStartTrial = async () => {
     setLoading(true);
@@ -44,7 +46,7 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
         onTrialActivated();
       }, 1200);
     } catch (e: any) {
-      setErrorMsg(e.response?.data?.detail || "Erreur lors de l'activation");
+      setErrorMsg(e.response?.data?.detail || t('paywall.activationError'));
     } finally {
       setLoading(false);
     }
@@ -69,29 +71,27 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           </LinearGradient>
         </View>
 
-        <Text style={styles.title}>{"Essayez gratuitement\npendant 7 jours"}</Text>
-        <Text style={styles.subtitle}>
-          Accédez à toutes les fonctionnalités pour gérer vos tontines en toute sécurité et transparence.
-        </Text>
+        <Text style={styles.title}>{t('paywall.title')}</Text>
+        <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
 
         {/* Offer Card */}
         <LinearGradient colors={['#EFF6FF', '#DBEAFE']} style={styles.offerCard}>
           <View style={styles.offerBadge}>
-            <Text style={styles.offerBadgeText}>MEILLEURE OFFRE</Text>
+            <Text style={styles.offerBadgeText}>{t('paywall.bestOffer')}</Text>
           </View>
-          <Text style={styles.offerTitle}>TontineClub Premium</Text>
+          <Text style={styles.offerTitle}>{t('paywall.premiumName')}</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceAmount}>3 $</Text>
-            <Text style={styles.pricePeriod}> USD / mois</Text>
+            <Text style={styles.priceAmount}>{t('paywall.priceAmount')}</Text>
+            <Text style={styles.pricePeriod}>{t('paywall.pricePeriod')}</Text>
           </View>
           <View style={styles.trialRow}>
             <Ionicons name="gift" size={16} color="#059669" />
-            <Text style={styles.trialText}>7 jours gratuits, puis 3 USD / mois</Text>
+            <Text style={styles.trialText}>{t('paywall.trialOffer')}</Text>
           </View>
         </LinearGradient>
 
         {/* Features */}
-        <Text style={styles.featuresTitle}>Tout inclus avec Premium</Text>
+        <Text style={styles.featuresTitle}>{t('paywall.allIncluded')}</Text>
         {FEATURES.map((f, i) => (
           <View key={i} style={styles.featureRow}>
             <View style={styles.featureIcon}>
@@ -130,19 +130,17 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           ) : (
             <>
               <Ionicons name="rocket" size={20} color="#FFFFFF" />
-              <Text style={styles.ctaText}>Commencer l'essai gratuit</Text>
+              <Text style={styles.ctaText}>{t('paywall.startTrial')}</Text>
             </>
           )}
         </TouchableOpacity>
 
         {/* Legal Text */}
-        <Text style={styles.legalText}>
-          Après les 7 jours d'essai, l'abonnement sera automatiquement renouvelé à 3 USD / mois. Vous pouvez annuler à tout moment via Google Play. Aucun paiement ne sera prélevé pendant la période d'essai.
-        </Text>
+        <Text style={styles.legalText}>{t('paywall.legalText')}</Text>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutLink} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Se déconnecter</Text>
+          <Text style={styles.logoutText}>{t('paywall.logoutLink')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

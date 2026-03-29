@@ -8,15 +8,18 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/src/store/authStore';
+import { useLanguageStore, Language } from '@/src/store/languageStore';
+import { useTranslation, LANGUAGES } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import axios from 'axios';
-import { useSubscriptionStore, SubStatus } from '@/src/store/subscriptionStore';
+import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
@@ -25,6 +28,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateProfile, token } = useAuthStore();
   const { status: subStatus, trialEnd, subscriptionEnd, cancelSubscription, fetchStatus: fetchSubStatus } = useSubscriptionStore();
+  const { language, setLanguage } = useLanguageStore();
+  const { t } = useTranslation();
+
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -35,17 +41,13 @@ export default function ProfileScreen() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
-  useEffect(() => {
-    if (successMsg) { const t = setTimeout(() => setSuccessMsg(null), 3000); return () => clearTimeout(t); }
-  }, [successMsg]);
-  useEffect(() => {
-    if (errorMsg) { const t = setTimeout(() => setErrorMsg(null), 4000); return () => clearTimeout(t); }
-  }, [errorMsg]);
+  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { if (successMsg) { const tm = setTimeout(() => setSuccessMsg(null), 3000); return () => clearTimeout(tm); } }, [successMsg]);
+  useEffect(() => { if (errorMsg) { const tm = setTimeout(() => setErrorMsg(null), 4000); return () => clearTimeout(tm); } }, [errorMsg]);
 
   const fetchStats = async () => {
     try {
@@ -54,17 +56,12 @@ export default function ProfileScreen() {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
       setStats(res.data);
-    } catch (e) {
-      console.error('Error fetching stats:', e);
-    }
+    } catch (e) { console.error('Error fetching stats:', e); }
   };
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      setErrorMsg('Permission requise pour accéder à vos photos.');
-      return;
-    }
+    if (status !== 'granted') { setErrorMsg(t('profile.photoPermission')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true,
@@ -74,19 +71,13 @@ export default function ProfileScreen() {
       try {
         const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
         await updateProfile({ profile_photo: base64Image });
-        setSuccessMsg('Photo de profil mise à jour !');
-      } catch (error: any) {
-        setErrorMsg(error.message);
-      } finally {
-        setUploading(false);
-      }
+        setSuccessMsg(t('profile.photoUpdated'));
+      } catch (error: any) { setErrorMsg(error.message); }
+      finally { setUploading(false); }
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/');
-  };
+  const handleLogout = async () => { await logout(); router.replace('/'); };
 
   const handleDeleteCheck = async () => {
     setDeleteLoading(true);
@@ -98,11 +89,8 @@ export default function ProfileScreen() {
       setDeletionInfo(res.data);
       setDeleteStep(res.data.can_delete ? 'confirm' : 'check');
       setShowDeleteModal(true);
-    } catch (e: any) {
-      setErrorMsg('Erreur lors de la vérification');
-    } finally {
-      setDeleteLoading(false);
-    }
+    } catch (e: any) { setErrorMsg(t('profile.verificationError')); }
+    finally { setDeleteLoading(false); }
   };
 
   const handleDeleteAccount = async () => {
@@ -111,30 +99,48 @@ export default function ProfileScreen() {
     try {
       const storedToken = token || await AsyncStorage.getItem('auth_token');
       await axios.post(`${API_URL}/api/account/delete`, {
-        password: deletePassword,
-        confirm: true,
+        password: deletePassword, confirm: true,
       }, { headers: { Authorization: `Bearer ${storedToken}` } });
       await logout();
       router.replace('/');
     } catch (e: any) {
-      const msg = e.response?.data?.detail || 'Erreur lors de la suppression';
+      const msg = e.response?.data?.detail || t('profile.deletionError');
       setErrorMsg(msg);
-    } finally {
-      setDeleteLoading(false);
+    } finally { setDeleteLoading(false); }
+  };
+
+  const getDateLocale = () => {
+    switch (language) {
+      case 'en': return 'en-US';
+      case 'es': return 'es-ES';
+      default: return 'fr-FR';
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(dateString).toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const handleSelectLanguage = async (lang: Language) => {
+    await setLanguage(lang);
+    setShowLangPicker(false);
+  };
+
+  const getSubStatusLabel = () => {
+    switch (subStatus) {
+      case 'trialing': return t('profile.statusTrial');
+      case 'active': return t('profile.statusActive');
+      case 'canceled': return t('profile.statusCanceled');
+      case 'expired': return t('profile.statusExpired');
+      default: return t('profile.statusInactive');
+    }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <Text style={styles.pageTitle}>Profil</Text>
+        <Text style={styles.pageTitle}>{t('profile.title')}</Text>
 
-        {/* Messages */}
         {successMsg && (
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={18} color="#059669" />
@@ -165,26 +171,26 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{user?.full_name}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
           {user?.created_at && (
-            <Text style={styles.memberSince}>Membre depuis {formatDate(user.created_at)}</Text>
+            <Text style={styles.memberSince}>{t('profile.memberSince', { date: formatDate(user.created_at) })}</Text>
           )}
         </View>
 
         {/* Tontine Stats */}
         {stats && (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Mes statistiques tontines</Text>
+            <Text style={styles.sectionTitle}>{t('profile.tontineStats')}</Text>
             <View style={styles.statsGrid}>
-              <StatItem icon="wallet" color="#2563EB" bg="#DBEAFE" label="Actives" value={stats.active_tontines} />
-              <StatItem icon="checkmark-done" color="#059669" bg="#D1FAE5" label="Terminées" value={stats.completed_tontines} />
-              <StatItem icon="people" color="#7C3AED" bg="#EDE9FE" label="Participations" value={stats.total_participations} />
-              <StatItem icon="mail" color="#D97706" bg="#FEF3C7" label="Invitations" value={stats.pending_invitations} />
+              <StatItem icon="wallet" color="#2563EB" bg="#DBEAFE" label={t('profile.statActive')} value={stats.active_tontines} />
+              <StatItem icon="checkmark-done" color="#059669" bg="#D1FAE5" label={t('profile.statCompleted')} value={stats.completed_tontines} />
+              <StatItem icon="people" color="#7C3AED" bg="#EDE9FE" label={t('profile.statParticipations')} value={stats.total_participations} />
+              <StatItem icon="mail" color="#D97706" bg="#FEF3C7" label={t('profile.statInvitations')} value={stats.pending_invitations} />
             </View>
           </View>
         )}
 
-        {/* Subscription Status */}
+        {/* Subscription */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Abonnement</Text>
+          <Text style={styles.sectionTitle}>{t('profile.subscription')}</Text>
           <View style={styles.subStatusRow}>
             <View style={[styles.subStatusIcon, { backgroundColor: subStatus === 'trialing' || subStatus === 'active' ? '#D1FAE5' : '#FEF3C7' }]}>
               <Ionicons
@@ -194,76 +200,92 @@ export default function ProfileScreen() {
               />
             </View>
             <View style={styles.subStatusText}>
-              <Text style={styles.subStatusLabel}>TontineClub Premium</Text>
+              <Text style={styles.subStatusLabel}>{t('profile.premiumName')}</Text>
               <Text style={[styles.subStatusValue, { color: subStatus === 'trialing' || subStatus === 'active' ? '#059669' : '#D97706' }]}>
-                {subStatus === 'trialing' ? 'Essai gratuit' : subStatus === 'active' ? 'Actif' : subStatus === 'canceled' ? 'Annulé' : subStatus === 'expired' ? 'Expiré' : 'Inactif'}
+                {getSubStatusLabel()}
               </Text>
               {(subStatus === 'trialing' && trialEnd) && (
-                <Text style={styles.subEndDate}>Expire le {new Date(trialEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+                <Text style={styles.subEndDate}>{t('profile.expiresOn', { date: formatDate(trialEnd) })}</Text>
               )}
               {(subStatus === 'active' && subscriptionEnd) && (
-                <Text style={styles.subEndDate}>Renouvellement le {new Date(subscriptionEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+                <Text style={styles.subEndDate}>{t('profile.renewsOn', { date: formatDate(subscriptionEnd) })}</Text>
               )}
             </View>
           </View>
           {(subStatus === 'trialing' || subStatus === 'active') && (
-            <TouchableOpacity
-              style={styles.cancelSubBtn}
-              onPress={async () => {
-                try {
-                  const msg = await cancelSubscription();
-                  setSuccessMsg(msg);
-                  await fetchSubStatus();
-                } catch (e: any) {
-                  setErrorMsg(e.response?.data?.detail || 'Erreur');
-                }
-              }}
-            >
-              <Text style={styles.cancelSubText}>Annuler l'abonnement</Text>
+            <TouchableOpacity style={styles.cancelSubBtn} onPress={async () => {
+              try {
+                const msg = await cancelSubscription();
+                setSuccessMsg(msg);
+                await fetchSubStatus();
+              } catch (e: any) { setErrorMsg(e.response?.data?.detail || t('profile.subscriptionError')); }
+            }}>
+              <Text style={styles.cancelSubText}>{t('profile.cancelSubscription')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Informations */}
+        {/* Personal Info */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Informations personnelles</Text>
-          <InfoRow icon="mail-outline" label="Email" value={user?.email || '-'} />
-          <InfoRow icon="call-outline" label="Téléphone" value={user?.phone || '-'} />
-          <InfoRow icon="calendar-outline" label="Inscription" value={user?.created_at ? formatDate(user.created_at) : '-'} />
+          <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
+          <InfoRow icon="mail-outline" label={t('profile.emailLabel')} value={user?.email || '-'} />
+          <InfoRow icon="call-outline" label={t('profile.phoneLabel')} value={user?.phone || '-'} />
+          <InfoRow icon="calendar-outline" label={t('profile.registrationLabel')} value={user?.created_at ? formatDate(user.created_at) : '-'} />
         </View>
 
-        {/* Compte et sécurité */}
+        {/* Account & Security */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Compte et sécurité</Text>
-          <ActionRow icon="person-outline" label="Modifier le profil" onPress={() => router.push('/profile/edit')} />
-          <ActionRow icon="lock-closed-outline" label="Changer le mot de passe" onPress={() => router.push('/profile/password')} />
-          <ActionRow icon="notifications-outline" label="Paramètres de notifications" onPress={() => {}} />
-          <ActionRow icon="globe-outline" label="Langue" value="Français" onPress={() => {}} />
+          <Text style={styles.sectionTitle}>{t('profile.accountSecurity')}</Text>
+          <ActionRow icon="person-outline" label={t('profile.editProfile')} onPress={() => router.push('/profile/edit')} />
+          <ActionRow icon="lock-closed-outline" label={t('profile.changePassword')} onPress={() => router.push('/profile/password')} />
+          <ActionRow icon="notifications-outline" label={t('profile.notificationSettings')} onPress={() => {}} />
+          <ActionRow icon="globe-outline" label={t('profile.language')} value={`${currentLang.flag} ${currentLang.label}`} onPress={() => setShowLangPicker(true)} />
         </View>
 
-        {/* Assistance / Légal */}
+        {/* Assistance & Legal */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Assistance et légal</Text>
-          <ActionRow icon="help-circle-outline" label="Centre d'aide" onPress={() => router.push('/legal/help')} />
-          <ActionRow icon="document-text-outline" label="Conditions d'utilisation" onPress={() => router.push('/legal/terms')} />
-          <ActionRow icon="shield-checkmark-outline" label="Politique de confidentialité" onPress={() => router.push('/legal/privacy')} />
-          <ActionRow icon="chatbubble-ellipses-outline" label="Nous contacter" onPress={() => router.push('/legal/contact')} />
+          <Text style={styles.sectionTitle}>{t('profile.assistanceLegal')}</Text>
+          <ActionRow icon="help-circle-outline" label={t('profile.helpCenter')} onPress={() => router.push('/legal/help')} />
+          <ActionRow icon="document-text-outline" label={t('profile.termsOfUse')} onPress={() => router.push('/legal/terms')} />
+          <ActionRow icon="shield-checkmark-outline" label={t('profile.privacyPolicy')} onPress={() => router.push('/legal/privacy')} />
+          <ActionRow icon="chatbubble-ellipses-outline" label={t('profile.contactUs')} onPress={() => router.push('/legal/contact')} />
         </View>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-          <Text style={styles.logoutText}>Déconnexion</Text>
+          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
 
         {/* Delete Account */}
         <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteCheck} activeOpacity={0.8}>
           <Ionicons name="trash-outline" size={16} color="#EF4444" />
-          <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
+          <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.version}>TontineClub v1.0.0</Text>
       </ScrollView>
+
+      {/* Language Picker Modal */}
+      <Modal visible={showLangPicker} transparent animationType="fade" onRequestClose={() => setShowLangPicker(false)}>
+        <TouchableOpacity style={styles.langModalOverlay} activeOpacity={1} onPress={() => setShowLangPicker(false)}>
+          <View style={styles.langModalCard}>
+            <Text style={styles.langModalTitle}>{t('profile.chooseLanguage')}</Text>
+            {LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.langOption, language === lang.code && styles.langOptionActive]}
+                onPress={() => handleSelectLanguage(lang.code)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langOptionFlag}>{lang.flag}</Text>
+                <Text style={[styles.langOptionText, language === lang.code && styles.langOptionTextActive]}>{lang.label}</Text>
+                {language === lang.code && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -273,32 +295,26 @@ export default function ProfileScreen() {
               <Ionicons name="close" size={22} color={colors.text} />
             </TouchableOpacity>
 
-            {/* Step: Check - Blockers */}
             {deleteStep === 'check' && deletionInfo && !deletionInfo.can_delete && (
               <View>
                 <Ionicons name="alert-circle" size={40} color="#DC2626" style={{ alignSelf: 'center', marginBottom: 12 }} />
-                <Text style={styles.modalTitle}>Suppression impossible</Text>
-                <Text style={styles.modalText}>
-                  Impossible de supprimer le compte tant que vous êtes administrateur d'une tontine active.
-                </Text>
+                <Text style={styles.modalTitle}>{t('profile.deleteImpossible')}</Text>
+                <Text style={styles.modalText}>{t('profile.deleteImpossibleText')}</Text>
                 {deletionInfo.blockers?.map((b: any, i: number) => (
                   <View key={i} style={styles.blockerItem}>
                     <Ionicons name="warning" size={16} color="#D97706" />
                     <Text style={styles.blockerText}>{b.message}</Text>
                   </View>
                 ))}
-                <Text style={styles.modalHint}>Veuillez transférer la gestion ou clôturer vos tontines avant de supprimer votre compte.</Text>
+                <Text style={styles.modalHint}>{t('profile.deleteHint')}</Text>
               </View>
             )}
 
-            {/* Step: Confirm */}
             {deleteStep === 'confirm' && (
               <View>
                 <Ionicons name="trash" size={40} color="#DC2626" style={{ alignSelf: 'center', marginBottom: 12 }} />
-                <Text style={styles.modalTitle}>Supprimer définitivement votre compte ?</Text>
-                <Text style={styles.modalText}>
-                  La suppression de votre compte peut avoir un impact sur vos tontines en cours. Cette action est irréversible.
-                </Text>
+                <Text style={styles.modalTitle}>{t('profile.deleteTitle')}</Text>
+                <Text style={styles.modalText}>{t('profile.deleteText')}</Text>
 
                 {deletionInfo?.warnings?.map((w: any, i: number) => (
                   <View key={i} style={styles.warningItem}>
@@ -309,20 +325,20 @@ export default function ProfileScreen() {
 
                 <View style={styles.infoBox}>
                   <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                  <Text style={styles.infoBoxText}>Certaines données sont conservées pour des raisons de traçabilité financière.</Text>
+                  <Text style={styles.infoBoxText}>{t('profile.dataRetention')}</Text>
                 </View>
 
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setDeleteConfirmed(!deleteConfirmed)}>
                   <View style={[styles.checkbox, deleteConfirmed && styles.checkboxChecked]}>
                     {deleteConfirmed && <Ionicons name="checkmark" size={14} color={colors.white} />}
                   </View>
-                  <Text style={styles.checkboxLabel}>Je comprends que cette action est définitive</Text>
+                  <Text style={styles.checkboxLabel}>{t('profile.deleteConfirmCheck')}</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel}>Mot de passe actuel</Text>
+                <Text style={styles.inputLabel}>{t('profile.currentPassword')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Entrez votre mot de passe"
+                  placeholder={t('profile.enterPassword')}
                   secureTextEntry
                   value={deletePassword}
                   onChangeText={setDeletePassword}
@@ -340,7 +356,7 @@ export default function ProfileScreen() {
                   ) : (
                     <>
                       <Ionicons name="trash" size={16} color={colors.white} />
-                      <Text style={styles.deleteConfirmText}>Supprimer définitivement</Text>
+                      <Text style={styles.deleteConfirmText}>{t('profile.deleteConfirmBtn')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -436,15 +452,6 @@ const styles = StyleSheet.create({
   actionLabel: { flex: 1, fontSize: 15, color: colors.text },
   actionValue: { fontSize: 13, color: colors.textSecondary, marginRight: 4 },
 
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEE2E2', paddingVertical: 14, borderRadius: 14, gap: 8, marginTop: 8, marginBottom: 12 },
-  logoutText: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
-
-  deleteAccountBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 6, marginBottom: 12 },
-  deleteAccountText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
-
-  version: { textAlign: 'center', color: colors.textLight, fontSize: 12, marginTop: 8, marginBottom: 16 },
-
-  // Subscription
   subStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   subStatusIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   subStatusText: { flex: 1 },
@@ -454,31 +461,43 @@ const styles = StyleSheet.create({
   cancelSubBtn: { alignItems: 'center', paddingVertical: 8 },
   cancelSubText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
 
-  // Modal
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEE2E2', paddingVertical: 14, borderRadius: 14, gap: 8, marginTop: 8, marginBottom: 12 },
+  logoutText: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
+
+  deleteAccountBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 6, marginBottom: 12 },
+  deleteAccountText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
+
+  version: { textAlign: 'center', color: colors.textLight, fontSize: 12, marginTop: 8, marginBottom: 16 },
+
+  // Language Picker Modal
+  langModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 32 },
+  langModalCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 24, gap: 8 },
+  langModalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 12 },
+  langOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, gap: 12, backgroundColor: '#F8FAFC' },
+  langOptionActive: { backgroundColor: '#EFF6FF', borderWidth: 1.5, borderColor: colors.primary + '40' },
+  langOptionFlag: { fontSize: 26 },
+  langOptionText: { flex: 1, fontSize: 16, fontWeight: '500', color: colors.text },
+  langOptionTextActive: { fontWeight: '700', color: colors.primary },
+
+  // Delete Modal
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 20, zIndex: 100 },
   modalCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 24, maxHeight: '85%' },
   modalClose: { position: 'absolute', top: 16, right: 16, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 12 },
   modalText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
   modalHint: { fontSize: 13, color: '#D97706', textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
-
   blockerItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, marginBottom: 8 },
   blockerText: { fontSize: 13, color: '#92400E', flex: 1, lineHeight: 18 },
-
   warningItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FEF3C7', borderRadius: 10, padding: 10, marginBottom: 8 },
   warningText: { fontSize: 13, color: '#92400E', flex: 1, lineHeight: 18 },
-
   infoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', borderRadius: 10, padding: 10, marginBottom: 16 },
   infoBoxText: { fontSize: 12, color: '#059669', flex: 1 },
-
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
   checkboxChecked: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   checkboxLabel: { fontSize: 13, color: colors.text, flex: 1 },
-
   inputLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.text, backgroundColor: '#F8FAFC', marginBottom: 16 },
-
   deleteConfirmBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#DC2626', paddingVertical: 14, borderRadius: 14, gap: 8 },
   deleteConfirmBtnDisabled: { opacity: 0.4 },
   deleteConfirmText: { color: colors.white, fontSize: 15, fontWeight: '600' },

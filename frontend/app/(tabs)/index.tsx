@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTontineStore, DashboardTontine } from '@/src/store/tontineStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { dashboard, fetchDashboard, isLoading, fetchUnreadCount, unreadCount } = useTontineStore();
+  const { t } = useTranslation();
 
   const loadData = useCallback(async () => {
     await Promise.all([fetchDashboard(), fetchUnreadCount()]);
@@ -52,8 +54,8 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Bonjour 👋</Text>
-            <Text style={styles.userName}>{user?.full_name || 'Utilisateur'}</Text>
+            <Text style={styles.greeting}>{t('dashboard.greeting')}</Text>
+            <Text style={styles.userName}>{user?.full_name || t('dashboard.user')}</Text>
           </View>
           <View style={styles.headerRight}>
             {unreadCount > 0 && (
@@ -74,7 +76,7 @@ export default function DashboardScreen() {
               onPress={() => router.push('/tontine/create')}
             >
               <Ionicons name="add" size={22} color={colors.white} />
-              <Text style={styles.addButtonText}>Créer</Text>
+              <Text style={styles.addButtonText}>{t('dashboard.create')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -90,22 +92,22 @@ export default function DashboardScreen() {
             <Ionicons name="shield-checkmark" size={24} color={colors.white} />
           </View>
           <View style={styles.trustTextWrap}>
-            <Text style={styles.trustTitle}>Fonds sécurisés & transparents</Text>
+            <Text style={styles.trustTitle}>{t('dashboard.trustTitle')}</Text>
             <Text style={styles.trustSubtitle}>
-              Suivi en temps réel • Traçabilité complète
+              {t('dashboard.trustSubtitle')}
             </Text>
           </View>
         </LinearGradient>
 
         {/* Financial Summary */}
         <View style={styles.financialCard}>
-          <Text style={styles.financialCardTitle}>Résumé financier</Text>
+          <Text style={styles.financialCardTitle}>{t('dashboard.financialSummary')}</Text>
           <View style={styles.financialGrid}>
             <View style={styles.financialItem}>
               <View style={[styles.financialIconWrap, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="arrow-up-circle" size={20} color="#D97706" />
               </View>
-              <Text style={styles.financialLabel}>Contribué</Text>
+              <Text style={styles.financialLabel}>{t('dashboard.contributed')}</Text>
               <Text style={[styles.financialValue, { color: '#D97706' }]}>
                 {formatCurrency(financialSummary.total_contributed, 'XOF')}
               </Text>
@@ -115,7 +117,7 @@ export default function DashboardScreen() {
               <View style={[styles.financialIconWrap, { backgroundColor: '#D1FAE5' }]}>
                 <Ionicons name="arrow-down-circle" size={20} color="#059669" />
               </View>
-              <Text style={styles.financialLabel}>Reçu</Text>
+              <Text style={styles.financialLabel}>{t('dashboard.received')}</Text>
               <Text style={[styles.financialValue, { color: '#059669' }]}>
                 {formatCurrency(financialSummary.total_received, 'XOF')}
               </Text>
@@ -129,7 +131,7 @@ export default function DashboardScreen() {
                   color={financialSummary.balance >= 0 ? '#2563EB' : '#DC2626'}
                 />
               </View>
-              <Text style={styles.financialLabel}>Solde</Text>
+              <Text style={styles.financialLabel}>{t('dashboard.balance')}</Text>
               <Text style={[styles.financialValue, { color: financialSummary.balance >= 0 ? '#2563EB' : '#DC2626' }]}>
                 {formatCurrency(Math.abs(financialSummary.balance), 'XOF')}
               </Text>
@@ -149,7 +151,7 @@ export default function DashboardScreen() {
             </View>
             <View>
               <Text style={styles.statPillNumber}>{dashboard?.active_tontines_count || 0}</Text>
-              <Text style={styles.statPillLabel}>Actives</Text>
+              <Text style={styles.statPillLabel}>{t('dashboard.actives')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -163,7 +165,7 @@ export default function DashboardScreen() {
             </View>
             <View>
               <Text style={styles.statPillNumber}>{dashboard?.pending_invitations_count || 0}</Text>
-              <Text style={styles.statPillLabel}>Invitations</Text>
+              <Text style={styles.statPillLabel}>{t('dashboard.invitations')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -177,7 +179,7 @@ export default function DashboardScreen() {
             </View>
             <View>
               <Text style={styles.statPillNumber}>{dashboard?.pending_confirmations_count || 0}</Text>
-              <Text style={styles.statPillLabel}>À confirmer</Text>
+              <Text style={styles.statPillLabel}>{t('dashboard.toConfirm')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -196,7 +198,7 @@ export default function DashboardScreen() {
                   <Ionicons name="trophy" size={24} color="#D97706" />
                 </View>
                 <View style={styles.beneficiaryTextWrap}>
-                  <Text style={styles.beneficiaryTitle}>🎉 Vous êtes le prochain bénéficiaire !</Text>
+                  <Text style={styles.beneficiaryTitle}>{t('dashboard.nextBeneficiary')}</Text>
                   <Text style={styles.beneficiaryText}>
                     Cycle {dashboard.next_beneficiary.cycle_number} — "{dashboard.next_beneficiary.tontine_name}"
                   </Text>
@@ -209,13 +211,13 @@ export default function DashboardScreen() {
         {/* Recent Tontines Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mes tontines</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.myTontines')}</Text>
             {dashboard?.recent_tontines && dashboard.recent_tontines.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push('/(tabs)/tontines')}
                 style={styles.seeAllButton}
               >
-                <Text style={styles.seeAllText}>Voir tout</Text>
+                <Text style={styles.seeAllText}>{t('common.seeAll')}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             )}
@@ -246,16 +248,17 @@ interface TontineCardProps {
 }
 
 function TontineCard({ tontine, onPress }: TontineCardProps) {
+  const { t } = useTranslation();
   const memberProgress = tontine.max_members > 0
     ? (tontine.current_members / tontine.max_members)
     : 0;
 
-  const statusConfig = getStatusConfig(tontine.status);
+  const statusConfig = getStatusConfig(tontine.status, t);
 
   const getFrequencyLabel = (freq: string) => {
     switch (freq) {
-      case 'weekly': return 'Hebdomadaire';
-      case 'monthly': return 'Mensuel';
+      case 'weekly': return t('common.weekly');
+      case 'monthly': return t('common.monthly');
       default: return freq;
     }
   };
@@ -289,7 +292,7 @@ function TontineCard({ tontine, onPress }: TontineCardProps) {
       <View style={styles.tontineCardBody}>
         {/* Pot Total */}
         <View style={styles.tontinePotRow}>
-          <Text style={styles.tontinePotLabel}>Pot total</Text>
+          <Text style={styles.tontinePotLabel}>{t('dashboard.totalPot')}</Text>
           <Text style={styles.tontinePotValue}>
             {formatCurrency(tontine.total_pot || (tontine.contribution_amount * tontine.max_members), tontine.currency || 'XOF')}
           </Text>
@@ -300,7 +303,7 @@ function TontineCard({ tontine, onPress }: TontineCardProps) {
           <View style={styles.tontineMembersInfo}>
             <Ionicons name="people" size={14} color={colors.textSecondary} />
             <Text style={styles.tontineMembersText}>
-              {tontine.current_members}/{tontine.max_members} membres
+              {tontine.current_members}/{tontine.max_members} {t('common.members')}
             </Text>
           </View>
           <View style={styles.progressBarBg}>
@@ -350,32 +353,33 @@ function TontineCard({ tontine, onPress }: TontineCardProps) {
 // ============ EMPTY STATE COMPONENT ============
 
 function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconWrap}>
         <Ionicons name="wallet-outline" size={48} color={colors.primary} />
       </View>
-      <Text style={styles.emptyTitle}>Commencez votre première tontine</Text>
+      <Text style={styles.emptyTitle}>{t('dashboard.emptyTitle')}</Text>
       <Text style={styles.emptySubtitle}>
-        Créez un groupe d'épargne, invitez vos proches et commencez à cotiser ensemble en toute confiance.
+        {t('dashboard.emptySubtitle')}
       </Text>
       <TouchableOpacity style={styles.emptyButton} onPress={onCreatePress} activeOpacity={0.8}>
         <Ionicons name="add-circle" size={20} color={colors.white} />
-        <Text style={styles.emptyButtonText}>Créer ma première tontine</Text>
+        <Text style={styles.emptyButtonText}>{t('dashboard.emptyButton')}</Text>
       </TouchableOpacity>
 
       <View style={styles.emptyFeatures}>
         <View style={styles.emptyFeatureItem}>
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.success} />
-          <Text style={styles.emptyFeatureText}>100% transparent</Text>
+          <Text style={styles.emptyFeatureText}>{t('dashboard.transparent')}</Text>
         </View>
         <View style={styles.emptyFeatureItem}>
           <Ionicons name="people-outline" size={18} color={colors.primary} />
-          <Text style={styles.emptyFeatureText}>Invitez facilement</Text>
+          <Text style={styles.emptyFeatureText}>{t('dashboard.inviteEasily')}</Text>
         </View>
         <View style={styles.emptyFeatureItem}>
           <Ionicons name="bar-chart-outline" size={18} color={colors.warning} />
-          <Text style={styles.emptyFeatureText}>Suivi en temps réel</Text>
+          <Text style={styles.emptyFeatureText}>{t('dashboard.realTimeTracking')}</Text>
         </View>
       </View>
     </View>
@@ -384,14 +388,14 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
 
 // ============ HELPERS ============
 
-function getStatusConfig(status: string) {
+function getStatusConfig(status: string, t: (key: string) => string) {
   switch (status) {
     case 'active':
-      return { label: 'Active', color: '#059669', bg: '#D1FAE5' };
+      return { label: t('common.active'), color: '#059669', bg: '#D1FAE5' };
     case 'draft':
-      return { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6' };
+      return { label: t('common.draft'), color: '#6B7280', bg: '#F3F4F6' };
     case 'completed':
-      return { label: 'Terminée', color: '#2563EB', bg: '#DBEAFE' };
+      return { label: t('common.completed'), color: '#2563EB', bg: '#DBEAFE' };
     default:
       return { label: status, color: '#6B7280', bg: '#F3F4F6' };
   }

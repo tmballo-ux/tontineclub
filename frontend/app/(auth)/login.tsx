@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -20,6 +20,7 @@ import { Button } from '@/src/components/Button';
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuthStore();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +30,9 @@ export default function LoginScreen() {
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = 'Email requis';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email invalide';
-    if (!password) newErrors.password = 'Mot de passe requis';
+    if (!email) newErrors.email = t('auth.emailRequired');
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = t('auth.emailInvalid');
+    if (!password) newErrors.password = t('auth.passwordRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -45,7 +46,7 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      const errorMessage = error.message || 'Erreur de connexion';
+      const errorMessage = error.message || t('auth.loginError');
       setGeneralError(errorMessage);
     } finally {
       setLoading(false);
@@ -70,10 +71,8 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Connexion</Text>
-            <Text style={styles.subtitle}>
-              Bienvenue! Connectez-vous pour continuer.
-            </Text>
+            <Text style={styles.title}>{t('auth.login')}</Text>
+            <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
           </View>
 
           <View style={styles.form}>
@@ -85,10 +84,10 @@ export default function LoginScreen() {
             ) : null}
 
             <Input
-              label="Email"
+              label={t('auth.email')}
               value={email}
               onChangeText={setEmail}
-              placeholder="votre@email.com"
+              placeholder={t('auth.emailPlaceholder')}
               keyboardType="email-address"
               autoCapitalize="none"
               icon="mail"
@@ -96,10 +95,10 @@ export default function LoginScreen() {
             />
 
             <Input
-              label="Mot de passe"
+              label={t('auth.password')}
               value={password}
               onChangeText={setPassword}
-              placeholder="Votre mot de passe"
+              placeholder={t('auth.passwordPlaceholderLogin')}
               isPassword
               icon="lock-closed"
               error={errors.password}
@@ -109,11 +108,11 @@ export default function LoginScreen() {
               style={styles.forgotPassword}
               onPress={() => router.push('/(auth)/forgot-password')}
             >
-              <Text style={styles.forgotPasswordText}>Mot de passe oublié?</Text>
+              <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
 
             <Button
-              title="Se connecter"
+              title={t('auth.loginButton')}
               onPress={handleLogin}
               loading={loading}
               size="lg"
@@ -121,9 +120,9 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte?</Text>
+            <Text style={styles.footerText}>{t('auth.noAccount')}</Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
-              <Text style={styles.footerLink}>S'inscrire</Text>
+              <Text style={styles.footerLink}>{t('auth.goToRegister')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -133,81 +132,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  backButton: {
-    marginTop: 16,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-  },
-  header: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  form: {
-    flex: 1,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.error + '15',
-    borderWidth: 1,
-    borderColor: colors.error,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
-  },
-  errorBannerText: {
-    flex: 1,
-    color: colors.error,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-    gap: 4,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-  footerLink: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 },
+  backButton: { marginTop: 16, width: 44, height: 44, justifyContent: 'center' },
+  header: { marginTop: 24, marginBottom: 32 },
+  title: { fontSize: 32, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
+  subtitle: { fontSize: 16, color: colors.textSecondary },
+  form: { flex: 1 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.error + '15', borderWidth: 1, borderColor: colors.error, borderRadius: 12, padding: 12, marginBottom: 16, gap: 8 },
+  errorBannerText: { flex: 1, color: colors.error, fontSize: 14, fontWeight: '500' },
+  forgotPassword: { alignSelf: 'flex-end', marginBottom: 24 },
+  forgotPasswordText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24, gap: 4 },
+  footerText: { color: colors.textSecondary, fontSize: 14 },
+  footerLink: { color: colors.primary, fontSize: 14, fontWeight: '600' },
 });

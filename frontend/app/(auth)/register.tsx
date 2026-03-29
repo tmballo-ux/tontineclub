@@ -4,15 +4,17 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
+import { useLanguageStore, Language } from '@/src/store/languageStore';
+import { useTranslation, LANGUAGES } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -20,6 +22,8 @@ import { Button } from '@/src/components/Button';
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuthStore();
+  const { language, setLanguage } = useLanguageStore();
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,16 +33,19 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
+  const [showLangPicker, setShowLangPicker] = useState(false);
+
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!fullName) newErrors.fullName = 'Nom complet requis';
-    if (!email) newErrors.email = 'Email requis';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email invalide';
-    if (!phone) newErrors.phone = 'Téléphone requis';
-    if (!password) newErrors.password = 'Mot de passe requis';
-    else if (password.length < 6) newErrors.password = 'Minimum 6 caractères';
-    if (password !== confirmPassword) newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+    if (!fullName) newErrors.fullName = t('auth.fullNameRequired');
+    if (!email) newErrors.email = t('auth.emailRequired');
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = t('auth.emailInvalid');
+    if (!phone) newErrors.phone = t('auth.phoneRequired');
+    if (!password) newErrors.password = t('auth.passwordRequired');
+    else if (password.length < 6) newErrors.password = t('auth.passwordMinLength');
+    if (password !== confirmPassword) newErrors.confirmPassword = t('auth.passwordMismatch');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -52,11 +59,16 @@ export default function RegisterScreen() {
       await register(email, password, fullName, phone);
       router.replace('/(tabs)');
     } catch (error: any) {
-      const errorMessage = error.message || "Erreur d'inscription";
+      const errorMessage = error.message || t('auth.registerError');
       setGeneralError(errorMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectLanguage = async (lang: Language) => {
+    await setLanguage(lang);
+    setShowLangPicker(false);
   };
 
   return (
@@ -77,10 +89,8 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Inscription</Text>
-            <Text style={styles.subtitle}>
-              Créez votre compte pour commencer.
-            </Text>
+            <Text style={styles.title}>{t('auth.register')}</Text>
+            <Text style={styles.subtitle}>{t('auth.registerSubtitle')}</Text>
           </View>
 
           <View style={styles.form}>
@@ -91,20 +101,34 @@ export default function RegisterScreen() {
               </View>
             ) : null}
 
+            {/* Language Selector */}
+            <View style={styles.langSection}>
+              <Text style={styles.langLabel}>{t('auth.chooseLanguage')}</Text>
+              <TouchableOpacity
+                style={styles.langSelector}
+                onPress={() => setShowLangPicker(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langFlag}>{currentLang.flag}</Text>
+                <Text style={styles.langText}>{currentLang.label}</Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
             <Input
-              label="Nom complet"
+              label={t('auth.fullName')}
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Jean Dupont"
+              placeholder={t('auth.fullNamePlaceholder')}
               icon="person"
               error={errors.fullName}
             />
 
             <Input
-              label="Email"
+              label={t('auth.email')}
               value={email}
               onChangeText={setEmail}
-              placeholder="votre@email.com"
+              placeholder={t('auth.emailPlaceholder')}
               keyboardType="email-address"
               autoCapitalize="none"
               icon="mail"
@@ -112,37 +136,37 @@ export default function RegisterScreen() {
             />
 
             <Input
-              label="Téléphone"
+              label={t('auth.phone')}
               value={phone}
               onChangeText={setPhone}
-              placeholder="+33 6 12 34 56 78"
+              placeholder={t('auth.phonePlaceholder')}
               keyboardType="phone-pad"
               icon="call"
               error={errors.phone}
             />
 
             <Input
-              label="Mot de passe"
+              label={t('auth.password')}
               value={password}
               onChangeText={setPassword}
-              placeholder="Minimum 6 caractères"
+              placeholder={t('auth.passwordPlaceholder')}
               isPassword
               icon="lock-closed"
               error={errors.password}
             />
 
             <Input
-              label="Confirmer le mot de passe"
+              label={t('auth.confirmPassword')}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Répétez le mot de passe"
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               isPassword
               icon="lock-closed"
               error={errors.confirmPassword}
             />
 
             <Button
-              title="S'inscrire"
+              title={t('auth.registerButton')}
               onPress={handleRegister}
               loading={loading}
               size="lg"
@@ -151,13 +175,53 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Déjà un compte?</Text>
+            <Text style={styles.footerText}>{t('auth.haveAccount')}</Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Text style={styles.footerLink}>Se connecter</Text>
+              <Text style={styles.footerLink}>{t('auth.goToLogin')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Language Picker Modal */}
+      <Modal
+        visible={showLangPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLangPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLangPicker(false)}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('auth.chooseLanguage')}</Text>
+            {LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.langOption,
+                  language === lang.code && styles.langOptionActive,
+                ]}
+                onPress={() => handleSelectLanguage(lang.code)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langOptionFlag}>{lang.flag}</Text>
+                <Text style={[
+                  styles.langOptionText,
+                  language === lang.code && styles.langOptionTextActive,
+                ]}>
+                  {lang.label}
+                </Text>
+                {language === lang.code && (
+                  <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -233,5 +297,84 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // Language Selector
+  langSection: {
+    marginBottom: 20,
+  },
+  langLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  langSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '40',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  langFlag: {
+    fontSize: 22,
+  },
+  langText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    gap: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  langOptionActive: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: colors.primary + '40',
+  },
+  langOptionFlag: {
+    fontSize: 26,
+  },
+  langOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  langOptionTextActive: {
+    fontWeight: '700',
+    color: colors.primary,
   },
 });

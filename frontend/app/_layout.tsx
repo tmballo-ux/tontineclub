@@ -2,14 +2,17 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/src/store/authStore';
+import { useLanguageStore } from '@/src/store/languageStore';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@/src/theme/colors';
 
 export default function RootLayout() {
   const { isLoading, loadToken } = useAuthStore();
+  const { loadLanguage } = useLanguageStore();
 
   useEffect(() => {
     loadToken();
+    loadLanguage();
   }, []);
 
   if (isLoading) {
