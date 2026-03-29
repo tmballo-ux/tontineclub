@@ -25,7 +25,7 @@
         "gradleCommand": ":app:bundleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://club-tontine.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://club-staging-3.preview.emergentagent.com"
       }
     }
   },

@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Base URL from frontend/.env
-BASE_URL = "https://club-tontine.preview.emergentagent.com/api"
+BASE_URL = "https://club-staging-3.preview.emergentagent.com/api"
 
 class SubscriptionTester:
     def __init__(self):

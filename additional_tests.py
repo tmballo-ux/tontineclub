@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-BASE_URL = "https://club-tontine.preview.emergentagent.com/api"
+BASE_URL = "https://club-staging-3.preview.emergentagent.com/api"
 
 class AdditionalAPITests:
     def __init__(self):

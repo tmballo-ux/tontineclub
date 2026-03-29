@@ -1,0 +1,15 @@
+# Secrets
+.env.production
+*.pem
+*.key
+google-services-key.json
+
+# Certbot
+certbot/conf/
+certbot/www/
+
+# Logs
+*.log
+
+# Docker
+.docker/
