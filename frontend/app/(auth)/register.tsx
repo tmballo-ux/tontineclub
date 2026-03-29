@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore, Language } from '@/src/store/languageStore';
+import { useCurrencyStore, CURRENCIES, CurrencyCode } from '@/src/store/currencyStore';
 import { useTranslation, LANGUAGES } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
@@ -23,6 +24,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
+  const { currency, setCurrency } = useCurrencyStore();
   const { t } = useTranslation();
 
   const [fullName, setFullName] = useState('');
@@ -34,8 +36,10 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+  const currentCurrency = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -69,6 +73,11 @@ export default function RegisterScreen() {
   const handleSelectLanguage = async (lang: Language) => {
     await setLanguage(lang);
     setShowLangPicker(false);
+  };
+
+  const handleSelectCurrency = async (code: CurrencyCode) => {
+    await setCurrency(code);
+    setShowCurrencyPicker(false);
   };
 
   return (
@@ -111,6 +120,20 @@ export default function RegisterScreen() {
               >
                 <Text style={styles.langFlag}>{currentLang.flag}</Text>
                 <Text style={styles.langText}>{currentLang.label}</Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Currency Selector */}
+            <View style={styles.langSection}>
+              <Text style={styles.langLabel}>{t('auth.chooseCurrency')}</Text>
+              <TouchableOpacity
+                style={styles.langSelector}
+                onPress={() => setShowCurrencyPicker(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langFlag}>{currentCurrency.flag}</Text>
+                <Text style={styles.langText}>{currentCurrency.label}</Text>
                 <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -215,6 +238,45 @@ export default function RegisterScreen() {
                   {lang.label}
                 </Text>
                 {language === lang.code && (
+                  <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      {/* Currency Picker Modal */}
+      <Modal
+        visible={showCurrencyPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCurrencyPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCurrencyPicker(false)}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('auth.chooseCurrency')}</Text>
+            {CURRENCIES.map((cur) => (
+              <TouchableOpacity
+                key={cur.code}
+                style={[
+                  styles.langOption,
+                  currency === cur.code && styles.langOptionActive,
+                ]}
+                onPress={() => handleSelectCurrency(cur.code)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langOptionFlag}>{cur.flag}</Text>
+                <Text style={[
+                  styles.langOptionText,
+                  currency === cur.code && styles.langOptionTextActive,
+                ]}>
+                  {cur.label}
+                </Text>
+                {currency === cur.code && (
                   <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                 )}
               </TouchableOpacity>

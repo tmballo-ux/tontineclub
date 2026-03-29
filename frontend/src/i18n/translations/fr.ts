@@ -74,6 +74,7 @@ export const fr = {
     passwordMinLength: 'Minimum 6 caractères',
     passwordMismatch: 'Les mots de passe ne correspondent pas',
     chooseLanguage: 'Langue de l\'application',
+    chooseCurrency: 'Devise par défaut',
     passwordPlaceholderLogin: 'Votre mot de passe',
   },
 
@@ -262,6 +263,8 @@ export const fr = {
     subscriptionError: 'Erreur',
     checkingSubscription: "Vérification de l'abonnement...",
     chooseLanguage: 'Choisir la langue',
+    chooseCurrency: 'Choisir la devise',
+    currency: 'Devise',
   },
 
   // Paywall

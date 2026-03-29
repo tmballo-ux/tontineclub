@@ -3,16 +3,19 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
+import { useCurrencyStore } from '@/src/store/currencyStore';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@/src/theme/colors';
 
 export default function RootLayout() {
   const { isLoading, loadToken } = useAuthStore();
   const { loadLanguage } = useLanguageStore();
+  const { loadCurrency } = useCurrencyStore();
 
   useEffect(() => {
     loadToken();
     loadLanguage();
+    loadCurrency();
   }, []);
 
   if (isLoading) {

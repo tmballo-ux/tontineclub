@@ -71,6 +71,7 @@ export const en: TranslationKeys = {
     passwordMinLength: 'Minimum 6 characters',
     passwordMismatch: 'Passwords do not match',
     chooseLanguage: 'App language',
+    chooseCurrency: 'Default currency',
     passwordPlaceholderLogin: 'Your password',
   },
   tabs: {
@@ -247,6 +248,8 @@ export const en: TranslationKeys = {
     subscriptionError: 'Error',
     checkingSubscription: 'Checking subscription...',
     chooseLanguage: 'Choose language',
+    chooseCurrency: 'Choose currency',
+    currency: 'Currency',
   },
   paywall: {
     title: 'Try free\nfor 7 days',

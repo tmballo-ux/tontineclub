@@ -114,6 +114,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    preferred_currency: Currency = Currency.XOF
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -123,10 +124,12 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     profile_photo: Optional[str] = None  # Base64
+    preferred_currency: Optional[str] = None
 
 class User(UserBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     profile_photo: Optional[str] = None
+    preferred_currency: str = "XOF"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class UserResponse(BaseModel):
@@ -135,6 +138,7 @@ class UserResponse(BaseModel):
     full_name: str
     phone: str
     profile_photo: Optional[str] = None
+    preferred_currency: str = "XOF"
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -304,7 +308,8 @@ async def register(user_data: UserCreate):
     user = User(
         email=user_data.email,
         full_name=user_data.full_name,
-        phone=user_data.phone
+        phone=user_data.phone,
+        preferred_currency=user_data.preferred_currency.value if hasattr(user_data.preferred_currency, 'value') else str(user_data.preferred_currency)
     )
     user_dict = user.dict()
     user_dict["password_hash"] = get_password_hash(user_data.password)
@@ -338,6 +343,7 @@ async def login(credentials: UserLogin):
             full_name=user["full_name"],
             phone=user["phone"],
             profile_photo=user.get("profile_photo"),
+            preferred_currency=user.get("preferred_currency", "XOF"),
             created_at=user["created_at"]
         )
     )
@@ -361,6 +367,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         full_name=current_user["full_name"],
         phone=current_user["phone"],
         profile_photo=current_user.get("profile_photo"),
+        preferred_currency=current_user.get("preferred_currency", "XOF"),
         created_at=current_user["created_at"]
     )
 
@@ -377,6 +384,7 @@ async def update_profile(update_data: UserUpdate, current_user: dict = Depends(g
         full_name=updated_user["full_name"],
         phone=updated_user["phone"],
         profile_photo=updated_user.get("profile_photo"),
+        preferred_currency=updated_user.get("preferred_currency", "XOF"),
         created_at=updated_user["created_at"]
     )
 

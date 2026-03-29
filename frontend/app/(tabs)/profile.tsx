@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore, Language } from '@/src/store/languageStore';
+import { useCurrencyStore, CURRENCIES, CurrencyCode } from '@/src/store/currencyStore';
 import { useTranslation, LANGUAGES } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import axios from 'axios';
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
   const { user, logout, updateProfile, token } = useAuthStore();
   const { status: subStatus, trialEnd, subscriptionEnd, cancelSubscription, fetchStatus: fetchSubStatus } = useSubscriptionStore();
   const { language, setLanguage } = useLanguageStore();
+  const { currency, setCurrency } = useCurrencyStore();
   const { t } = useTranslation();
 
   const [uploading, setUploading] = useState(false);
@@ -42,8 +44,10 @@ export default function ProfileScreen() {
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+  const currentCurrency = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
 
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => { if (successMsg) { const tm = setTimeout(() => setSuccessMsg(null), 3000); return () => clearTimeout(tm); } }, [successMsg]);
@@ -240,6 +244,7 @@ export default function ProfileScreen() {
           <ActionRow icon="lock-closed-outline" label={t('profile.changePassword')} onPress={() => router.push('/profile/password')} />
           <ActionRow icon="notifications-outline" label={t('profile.notificationSettings')} onPress={() => {}} />
           <ActionRow icon="globe-outline" label={t('profile.language')} value={`${currentLang.flag} ${currentLang.label}`} onPress={() => setShowLangPicker(true)} />
+          <ActionRow icon="cash-outline" label={t('profile.currency')} value={`${currentCurrency.flag} ${currentCurrency.symbol}`} onPress={() => setShowCurrencyPicker(true)} />
         </View>
 
         {/* Assistance & Legal */}
@@ -281,6 +286,27 @@ export default function ProfileScreen() {
                 <Text style={styles.langOptionFlag}>{lang.flag}</Text>
                 <Text style={[styles.langOptionText, language === lang.code && styles.langOptionTextActive]}>{lang.label}</Text>
                 {language === lang.code && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Currency Picker Modal */}
+      <Modal visible={showCurrencyPicker} transparent animationType="fade" onRequestClose={() => setShowCurrencyPicker(false)}>
+        <TouchableOpacity style={styles.langModalOverlay} activeOpacity={1} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={styles.langModalCard}>
+            <Text style={styles.langModalTitle}>{t('profile.chooseCurrency')}</Text>
+            {CURRENCIES.map((cur) => (
+              <TouchableOpacity
+                key={cur.code}
+                style={[styles.langOption, currency === cur.code && styles.langOptionActive]}
+                onPress={async () => { await setCurrency(cur.code); setShowCurrencyPicker(false); }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langOptionFlag}>{cur.flag}</Text>
+                <Text style={[styles.langOptionText, currency === cur.code && styles.langOptionTextActive]}>{cur.label}</Text>
+                {currency === cur.code && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </View>
