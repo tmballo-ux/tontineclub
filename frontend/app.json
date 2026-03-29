@@ -6,11 +6,16 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tontineclub",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tontineclub.app"
+      "bundleIdentifier": "com.tontineclub.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Prendre votre photo de profil",
+        "NSPhotoLibraryUsageDescription": "Choisir votre photo de profil"
+      }
     },
     "android": {
       "package": "com.tontineclub.app",
@@ -19,13 +24,18 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#2563EB"
       },
-      "edgeToEdgeEnabled": true,
       "permissions": [
-        "android.permission.CAMERA",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -39,18 +49,16 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#2563EB"
         }
       ],
-      "@react-native-community/datetimepicker",
-      "expo-secure-store",
       [
         "expo-image-picker",
         {
-          "photosPermission": "L'application accède à vos photos pour votre photo de profil.",
-          "cameraPermission": "L'application accède à la caméra pour votre photo de profil."
+          "photosPermission": "Choisir votre photo de profil",
+          "cameraPermission": "Prendre votre photo de profil"
         }
       ]
     ],
@@ -61,6 +69,10 @@
       "eas": {
         "projectId": "your-project-id"
       }
+    },
+    "owner": "tontineclub",
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

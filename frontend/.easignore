@@ -1,0 +1,7 @@
+# EAS Build ignore file
+.expo/
+.git/
+.metro-cache/
+node_modules/.cache/
+*.log
+test_result.md
