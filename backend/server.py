@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -354,7 +354,8 @@ async def login(credentials: UserLogin):
     )
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(email: EmailStr):
+async def forgot_password(data: dict = Body(...)):
+    email = data.get("email", "")
     user = await db.users.find_one({"email": email})
     if not user:
         # Don't reveal if email exists
@@ -392,6 +393,30 @@ async def update_profile(update_data: UserUpdate, current_user: dict = Depends(g
         preferred_currency=updated_user.get("preferred_currency", "XOF"),
         created_at=updated_user["created_at"]
     )
+
+@api_router.post("/auth/change-password")
+async def change_password(data: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    current_password = data.get("current_password", "")
+    new_password = data.get("new_password", "")
+    
+    if not current_password or not new_password:
+        raise HTTPException(status_code=400, detail="Tous les champs sont requis")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit contenir au moins 6 caractères")
+    
+    # Verify current password
+    if not pwd_context.verify(current_password, current_user.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+    
+    # Hash and update new password
+    hashed_password = pwd_context.hash(new_password)
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"password_hash": hashed_password}}
+    )
+    
+    return {"message": "Mot de passe modifié avec succès"}
 
 # ===================== TONTINE ENDPOINTS =====================
 
@@ -1616,10 +1641,6 @@ async def get_account_stats(current_user: dict = Depends(get_current_user)):
 @api_router.get("/")
 async def root():
     return {"message": "TontineClub API v1.0.0", "status": "running"}
-
-@api_router.get("/health")
-async def health():
-    return {"status": "healthy"}
 
 # Include the router in the main app
 app.include_router(api_router)

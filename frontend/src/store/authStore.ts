@@ -45,7 +45,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, fullName: string, phone: string) => Promise<void>;
+  register: (email: string, password: string, fullName: string, phone: string, preferredCurrency?: string) => Promise<void>;
   logout: () => Promise<void>;
   loadToken: () => Promise<void>;
   updateProfile: (data: { full_name?: string; phone?: string; profile_photo?: string }) => Promise<void>;
@@ -88,18 +88,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ token: access_token, user, isAuthenticated: true });
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Erreur de connexion');
+      const detail = error.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        throw new Error('Erreur réseau. Vérifiez votre connexion internet.');
+      } else {
+        throw new Error('Erreur de connexion. Veuillez réessayer.');
+      }
     }
   },
 
-  register: async (email: string, password: string, fullName: string, phone: string) => {
+  register: async (email: string, password: string, fullName: string, phone: string, preferredCurrency?: string) => {
     try {
-      const response = await axios.post(`${API_URL}/api/auth/register`, {
+      const requestBody: any = {
         email,
         password,
         full_name: fullName,
         phone,
-      });
+      };
+      if (preferredCurrency) {
+        requestBody.preferred_currency = preferredCurrency;
+      }
+      const response = await axios.post(`${API_URL}/api/auth/register`, requestBody);
 
       const { access_token, user } = response.data;
       
@@ -108,7 +119,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ token: access_token, user, isAuthenticated: true });
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || "Erreur d'inscription");
+      const detail = error.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        throw new Error('Erreur réseau. Vérifiez votre connexion internet.');
+      } else {
+        throw new Error("Erreur d'inscription. Veuillez réessayer.");
+      }
     }
   },
 
@@ -129,7 +147,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setItem('user', JSON.stringify(user));
       set({ user });
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Erreur de mise à jour');
+      const detail = error.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        throw new Error('Erreur réseau. Vérifiez votre connexion internet.');
+      } else {
+        throw new Error('Erreur de mise à jour');
+      }
     }
   },
 }));

@@ -60,7 +60,7 @@ export default function RegisterScreen() {
     setLoading(true);
     setGeneralError('');
     try {
-      await register(email, password, fullName, phone);
+      await register(email, password, fullName, phone, currency);
       router.replace('/(tabs)');
     } catch (error: any) {
       const errorMessage = error.message || t('auth.registerError');

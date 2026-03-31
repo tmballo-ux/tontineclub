@@ -12,13 +12,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import { useAuthStore } from '@/src/store/authStore';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
 
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const { token } = useAuthStore();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -38,14 +43,27 @@ export default function ChangePasswordScreen() {
 
   const handleSave = async () => {
     if (!validate()) return;
+    if (loading) return;
 
     setLoading(true);
     try {
-      // For MVP, just show success - password change would need backend endpoint
-      Alert.alert('Succès', 'Mot de passe modifié!');
+      await axios.post(`${API_URL}/api/auth/change-password`, {
+        current_password: currentPassword,
+        new_password: newPassword,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      Alert.alert('Succès', 'Mot de passe modifié avec succès!');
       router.back();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      const detail = error.response?.data?.detail;
+      if (detail) {
+        Alert.alert('Erreur', detail);
+      } else if (error.code === 'ERR_NETWORK') {
+        Alert.alert('Erreur', 'Erreur réseau. Vérifiez votre connexion.');
+      } else {
+        Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
