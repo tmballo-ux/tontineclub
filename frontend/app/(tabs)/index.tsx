@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTontineStore, DashboardTontine } from '@/src/store/tontineStore';
 import { useTranslation } from '@/src/i18n';
-import { colors, shadows } from '@/src/theme/colors';
+import { colors, shadows, useThemeColors } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -26,6 +26,7 @@ export default function DashboardScreen() {
   const { user } = useAuthStore();
   const { dashboard, fetchDashboard, isLoading, fetchUnreadCount, unreadCount } = useTontineStore();
   const { t } = useTranslation();
+  const themeColors = useThemeColors();
 
   const loadData = useCallback(async () => {
     await Promise.all([fetchDashboard(), fetchUnreadCount()]);
@@ -38,15 +39,15 @@ export default function DashboardScreen() {
   const financialSummary = dashboard?.financial_summary || { total_contributed: 0, total_received: 0, balance: 0 };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
             onRefresh={loadData}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+            tintColor={themeColors.primary}
+            colors={[themeColors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -54,8 +55,8 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{t('dashboard.greeting')}</Text>
-            <Text style={styles.userName}>{user?.full_name || t('dashboard.user')}</Text>
+            <Text style={[styles.greeting, { color: themeColors.textSecondary }]}>{t('dashboard.greeting')}</Text>
+            <Text style={[styles.userName, { color: themeColors.text }]}>{user?.full_name || t('dashboard.user')}</Text>
           </View>
           <View style={styles.headerRight}>
             {unreadCount > 0 && (
@@ -63,7 +64,7 @@ export default function DashboardScreen() {
                 style={styles.notifButton}
                 onPress={() => router.push('/(tabs)/notifications')}
               >
-                <Ionicons name="notifications" size={22} color={colors.text} />
+                <Ionicons name="notifications" size={22} color={themeColors.text} />
                 <View style={styles.notifBadge}>
                   <Text style={styles.notifBadgeText}>
                     {unreadCount > 9 ? '9+' : unreadCount}

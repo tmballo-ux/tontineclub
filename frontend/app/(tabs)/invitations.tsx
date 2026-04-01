@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, EnrichedInvitation } from '@/src/store/tontineStore';
 import { useTranslation } from '@/src/i18n';
-import { colors, shadows } from '@/src/theme/colors';
+import { colors, shadows, useThemeColors } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 
 type TabType = 'pending' | 'history';
@@ -28,6 +28,7 @@ export default function InvitationsScreen() {
     isLoading,
   } = useTontineStore();
   const { t } = useTranslation();
+  const themeColors = useThemeColors();
 
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -116,12 +117,12 @@ export default function InvitationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>{t('invitations.title')}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: themeColors.text }]}>{t('invitations.title')}</Text>
+          <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
             {pendingInvitations.length} {t('invitations.pending')}
           </Text>
         </View>

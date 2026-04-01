@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Notification } from '@/src/store/tontineStore';
 import { useTranslation } from '@/src/i18n';
-import { colors, shadows } from '@/src/theme/colors';
+import { colors, shadows, useThemeColors } from '@/src/theme/colors';
 
 type FilterType = 'all' | 'unread' | 'invitations' | 'payments' | 'system';
 
@@ -43,6 +43,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { notifications, fetchNotifications, markAsRead, markAllAsRead, isLoading } = useTontineStore();
   const { t } = useTranslation();
+  const themeColors = useThemeColors();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   const getNotifFilterLabel = (key: FilterType) => {
@@ -172,12 +173,12 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
-          <Text style={styles.headerSubtitle}>{t('notifications.unread').replace('{count}', String(unreadCount)).replace('{plural}', unreadCount !== 1 ? 's' : '')}</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('notifications.title')}</Text>
+          <Text style={[styles.headerSubtitle, { color: themeColors.textSecondary }]}>{t('notifications.unread').replace('{count}', String(unreadCount)).replace('{plural}', unreadCount !== 1 ? 's' : '')}</Text>
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead}>

@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, EnrichedTontine } from '@/src/store/tontineStore';
 import { useTranslation } from '@/src/i18n';
-import { colors, shadows } from '@/src/theme/colors';
+import { colors, shadows, useThemeColors } from '@/src/theme/colors';
 import { formatCurrency } from '@/src/utils/currency';
 
 type FilterType = 'all' | 'active' | 'draft' | 'completed';
@@ -36,6 +36,7 @@ export default function TontinesScreen() {
   const router = useRouter();
   const { enrichedTontines, fetchEnrichedTontines, isLoading } = useTontineStore();
   const { t } = useTranslation();
+  const themeColors = useThemeColors();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [activeSort, setActiveSort] = useState<SortType>('date');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -130,12 +131,12 @@ export default function TontinesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>{t('tontines.myTontines')}</Text>
-          <Text style={styles.subtitle}>{t('tontines.tontineCount', { count: enrichedTontines.length, plural: enrichedTontines.length !== 1 ? 's' : '' })}</Text>
+          <Text style={[styles.title, { color: themeColors.text }]}>{t('tontines.myTontines')}</Text>
+          <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{t('tontines.tontineCount', { count: enrichedTontines.length, plural: enrichedTontines.length !== 1 ? 's' : '' })}</Text>
         </View>
         <TouchableOpacity
           style={styles.addButton}

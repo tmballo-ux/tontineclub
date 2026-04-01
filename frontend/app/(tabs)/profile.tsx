@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,7 +19,8 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore, Language } from '@/src/store/languageStore';
 import { useCurrencyStore, CURRENCIES, CurrencyCode } from '@/src/store/currencyStore';
 import { useTranslation, LANGUAGES } from '@/src/i18n';
-import { colors, shadows } from '@/src/theme/colors';
+import { colors, shadows, useThemeColors } from '@/src/theme/colors';
+import { useThemeStore, ThemeMode } from '@/src/store/themeStore';
 import axios from 'axios';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,6 +43,14 @@ export default function ProfileScreen() {
   const { language, setLanguage } = useLanguageStore();
   const { currency, setCurrency } = useCurrencyStore();
   const { t } = useTranslation();
+  const themeColors = useThemeColors();
+  const { mode: themeMode, setMode: setThemeMode } = useThemeStore();
+
+  const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: string }[] = [
+    { mode: 'light', label: t('profile.themeLight'), icon: 'sunny' },
+    { mode: 'dark', label: t('profile.themeDark'), icon: 'moon' },
+    { mode: 'system', label: t('profile.themeSystem'), icon: 'phone-portrait' },
+  ];
 
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -179,9 +189,9 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.pageTitle}>{t('profile.title')}</Text>
+        <Text style={[styles.pageTitle, { color: themeColors.text }]}>{t('profile.title')}</Text>
 
         {successMsg && (
           <View style={styles.successBanner}>
@@ -197,7 +207,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage} disabled={uploading}>
             {user?.profile_photo ? (
               <Image source={{ uri: user.profile_photo }} style={styles.avatar} />
@@ -210,8 +220,8 @@ export default function ProfileScreen() {
               {uploading ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="camera" size={14} color={colors.white} />}
             </View>
           </TouchableOpacity>
-          <Text style={styles.userName}>{user?.full_name}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={[styles.userName, { color: themeColors.text }]}>{user?.full_name}</Text>
+          <Text style={[styles.userEmail, { color: themeColors.textSecondary }]}>{user?.email}</Text>
           {user?.created_at && (
             <Text style={styles.memberSince}>{t('profile.memberSince', { date: formatDate(user.created_at) })}</Text>
           )}
@@ -219,7 +229,7 @@ export default function ProfileScreen() {
 
         {/* Tontine Stats */}
         {stats && (
-          <View style={styles.sectionCard}>
+          <View style={[styles.sectionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
             <Text style={styles.sectionTitle}>{t('profile.tontineStats')}</Text>
             <View style={styles.statsGrid}>
               <StatItem icon="wallet" color="#2563EB" bg="#DBEAFE" label={t('profile.statActive')} value={stats.active_tontines} />
@@ -231,7 +241,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Subscription */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Text style={styles.sectionTitle}>{t('profile.subscription')}</Text>
           <View style={styles.subStatusRow}>
             <View style={[styles.subStatusIcon, { backgroundColor: subStatus === 'trialing' || subStatus === 'active' ? '#D1FAE5' : '#FEF3C7' }]}>
@@ -268,7 +278,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Personal Info */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Text style={styles.sectionTitle}>{t('profile.personalInfo')}</Text>
           <InfoRow icon="mail-outline" label={t('profile.emailLabel')} value={user?.email || '-'} />
           <InfoRow icon="call-outline" label={t('profile.phoneLabel')} value={user?.phone || '-'} />
@@ -276,17 +286,54 @@ export default function ProfileScreen() {
         </View>
 
         {/* Account & Security */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Text style={styles.sectionTitle}>{t('profile.accountSecurity')}</Text>
           <ActionRow icon="person-outline" label={t('profile.editProfile')} onPress={() => router.push('/profile/edit')} />
           <ActionRow icon="lock-closed-outline" label={t('profile.changePassword')} onPress={() => router.push('/profile/password')} />
-          <ActionRow icon="notifications-outline" label={t('profile.notificationSettings')} onPress={() => {}} />
+          <ActionRow icon="notifications-outline" label={t('profile.notificationSettings')} onPress={() => {
+            Alert.alert(t('profile.notificationSettings'), t('common.comingSoon'));
+          }} />
           <ActionRow icon="globe-outline" label={t('profile.language')} value={`${currentLang.flag} ${currentLang.label}`} onPress={() => setShowLangPicker(true)} />
           <ActionRow icon="cash-outline" label={t('profile.currency')} value={`${currentCurrency.flag} ${currentCurrency.symbol}`} onPress={() => setShowCurrencyPicker(true)} />
+
+          {/* Theme Toggle */}
+          <View style={[styles.themeRow]}>
+            <View style={styles.themeRowLeft}>
+              <View style={[styles.actionIconWrap, { backgroundColor: themeColors.surfaceVariant }]}>
+                <Ionicons name="contrast-outline" size={18} color={themeColors.primary} />
+              </View>
+              <Text style={[styles.actionLabel, { color: themeColors.text }]}>{t('profile.theme')}</Text>
+            </View>
+            <View style={styles.themePills}>
+              {THEME_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.mode}
+                  style={[
+                    styles.themePill,
+                    { backgroundColor: themeMode === opt.mode ? themeColors.primary : themeColors.surfaceVariant },
+                  ]}
+                  onPress={() => setThemeMode(opt.mode)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={opt.icon as any}
+                    size={14}
+                    color={themeMode === opt.mode ? themeColors.white : themeColors.textSecondary}
+                  />
+                  <Text style={[
+                    styles.themePillText,
+                    { color: themeMode === opt.mode ? themeColors.white : themeColors.textSecondary },
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* Assistance & Legal */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Text style={styles.sectionTitle}>{t('profile.assistanceLegal')}</Text>
           <ActionRow icon="help-circle-outline" label={t('profile.helpCenter')} onPress={() => router.push('/legal/help')} />
           <ActionRow icon="document-text-outline" label={t('profile.termsOfUse')} onPress={() => router.push('/legal/terms')} />
@@ -565,4 +612,11 @@ const styles = StyleSheet.create({
   deleteConfirmBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#DC2626', paddingVertical: 14, borderRadius: 14, gap: 8 },
   deleteConfirmBtnDisabled: { opacity: 0.4 },
   deleteConfirmText: { color: colors.white, fontSize: 15, fontWeight: '600' },
+
+  // Theme Toggle
+  themeRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  themeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  themePills: { flexDirection: 'row', gap: 8, marginLeft: 48 },
+  themePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
+  themePillText: { fontSize: 12, fontWeight: '600' },
 });

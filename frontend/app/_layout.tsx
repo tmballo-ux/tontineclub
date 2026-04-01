@@ -4,18 +4,22 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/src/store/authStore';
 import { useLanguageStore } from '@/src/store/languageStore';
 import { useCurrencyStore } from '@/src/store/currencyStore';
+import { useThemeStore } from '@/src/store/themeStore';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '@/src/theme/colors';
+import { colors, useIsDark } from '@/src/theme/colors';
 
 export default function RootLayout() {
   const { isLoading, loadToken } = useAuthStore();
   const { loadLanguage } = useLanguageStore();
   const { loadCurrency } = useCurrencyStore();
+  const { loadTheme } = useThemeStore();
+  const isDark = useIsDark();
 
   useEffect(() => {
     loadToken();
     loadLanguage();
     loadCurrency();
+    loadTheme();
   }, []);
 
   if (isLoading) {
@@ -28,7 +32,7 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />

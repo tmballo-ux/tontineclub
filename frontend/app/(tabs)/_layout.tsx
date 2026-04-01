@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/src/theme/colors';
+import { colors, useThemeColors } from '@/src/theme/colors';
 import { useTontineStore } from '@/src/store/tontineStore';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
@@ -16,6 +16,7 @@ export default function TabsLayout() {
   const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const themeColors = useThemeColors();
 
   const tabBarBottomPadding = Math.max(insets.bottom, 8);
 
@@ -51,8 +52,8 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: themeColors.surface,
+          borderTopColor: themeColors.border,
           paddingBottom: tabBarBottomPadding,
           paddingTop: 8,
           height: 60 + tabBarBottomPadding,
