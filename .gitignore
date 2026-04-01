@@ -85,3 +85,12 @@ android-sdk/
 !backend/.env
 !frontend/.env
 memory/test_credentials.md
+
+# Test files
+additional_tests.py
+backend_test.py
+comprehensive_backend_test.py
+detailed_test.py
+generate_assets.py
+test_existing_credentials.py
+test_result.md

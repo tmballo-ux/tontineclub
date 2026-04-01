@@ -7,10 +7,15 @@ from typing import Optional
 from datetime import datetime, timedelta
 import jwt
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from passlib.context import CryptContext
 
+# Load env vars explicitly for admin routes
+load_dotenv(Path(__file__).parent / '.env')
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.environ['JWT_SECRET']
+SECRET_KEY = os.environ.get('JWT_SECRET', '')
 ADMIN_SECRET = os.environ.get('ADMIN_JWT_SECRET', '')
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
