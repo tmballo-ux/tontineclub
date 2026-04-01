@@ -39,9 +39,30 @@ app = FastAPI(title="TontineClub API", version="1.0.0")
 
 # Serve Play Store assets
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
 import os as _os
+import resend
+import secrets
+
 if _os.path.exists("/app/backend/playstore_assets"):
     app.mount("/api/assets", StaticFiles(directory="/app/backend/playstore_assets"), name="playstore_assets")
+
+# Admin static files
+if _os.path.exists("/app/backend/admin_static"):
+    app.mount("/admin/static", StaticFiles(directory="/app/backend/admin_static"), name="admin_static")
+
+# Admin page route (served OUTSIDE /api prefix)
+@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin/", response_class=HTMLResponse)
+async def admin_page():
+    admin_html = Path("/app/backend/admin_static/index.html")
+    if admin_html.exists():
+        return HTMLResponse(content=admin_html.read_text())
+    return HTMLResponse(content="<h1>Admin not found</h1>", status_code=404)
+
+# Resend configuration for password reset emails
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_LsUVgSXx_K2EqvFgsjT2KD8ZkaAWL87Ft')
+resend.api_key = RESEND_API_KEY
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -357,13 +378,45 @@ async def login(credentials: UserLogin):
 async def forgot_password(data: dict = Body(...)):
     email = data.get("email", "")
     user = await db.users.find_one({"email": email})
-    if not user:
-        # Don't reveal if email exists
-        return {"message": "Si cet email existe, un lien de réinitialisation sera envoyé"}
     
-    # In production, send email here
-    # For MVP, just return success
-    return {"message": "Si cet email existe, un lien de réinitialisation sera envoyé"}
+    if user:
+        # Generate a secure temporary password
+        temp_password = secrets.token_urlsafe(8) + "!A1"
+        hashed = pwd_context.hash(temp_password)
+        await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hashed}})
+        
+        # Send email via Resend
+        try:
+            resend.Emails.send({
+                "from": "TontineClub <onboarding@resend.dev>",
+                "to": [email],
+                "subject": "TontineClub — Réinitialisation de votre mot de passe",
+                "html": f"""
+                <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #F8FAFC; border-radius: 16px;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <h1 style="color: #1E40AF; font-size: 24px; margin: 0;">🏦 TontineClub</h1>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <h2 style="color: #0F172A; font-size: 20px; margin-top: 0;">Réinitialisation du mot de passe</h2>
+                        <p style="color: #475569; line-height: 1.6;">Bonjour <strong>{user.get('full_name', '')}</strong>,</p>
+                        <p style="color: #475569; line-height: 1.6;">Votre mot de passe a été réinitialisé. Voici votre nouveau mot de passe temporaire :</p>
+                        <div style="background: #EFF6FF; border: 2px solid #1E40AF; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
+                            <span style="font-size: 22px; font-weight: bold; color: #1E40AF; letter-spacing: 2px;">{temp_password}</span>
+                        </div>
+                        <p style="color: #475569; line-height: 1.6;">⚠️ <strong>Important :</strong> Connectez-vous avec ce mot de passe temporaire, puis changez-le immédiatement dans vos paramètres de profil.</p>
+                        <p style="color: #94A3B8; font-size: 13px; margin-top: 24px;">Si vous n'avez pas demandé cette réinitialisation, contactez immédiatement notre support.</p>
+                    </div>
+                    <p style="text-align: center; color: #94A3B8; font-size: 12px; margin-top: 16px;">© 2026 TontineClub — Gestion de tontines sécurisée</p>
+                </div>
+                """
+            })
+            logger.info(f"Password reset email sent to {email}")
+        except Exception as e:
+            logger.error(f"Failed to send reset email: {e}")
+            # Still return success - password was already reset
+    
+    # Always return same message (security: don't reveal if email exists)
+    return {"message": "Si cet email est associé à un compte, un nouveau mot de passe vous a été envoyé."}
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
@@ -1644,6 +1697,11 @@ async def root():
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Admin routes
+from admin_routes import setup_admin_routes, admin_router
+setup_admin_routes(db)
+app.include_router(admin_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

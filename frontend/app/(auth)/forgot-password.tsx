@@ -42,7 +42,14 @@ export default function ForgotPasswordScreen() {
       await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
       setSent(true);
     } catch (err: any) {
-      Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+      const detail = err.response?.data?.detail;
+      if (detail) {
+        Alert.alert('Erreur', detail);
+      } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        Alert.alert('Erreur', 'Erreur réseau. Vérifiez votre connexion internet.');
+      } else {
+        Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +86,7 @@ export default function ForgotPasswordScreen() {
               </View>
               <Text style={styles.successTitle}>Email envoyé!</Text>
               <Text style={styles.successText}>
-                Si cet email est associé à un compte, vous recevrez un lien de réinitialisation.
+                Si cet email est associé à un compte, un nouveau mot de passe temporaire vous a été envoyé. Vérifiez aussi vos spams.
               </Text>
               <Button
                 title="Retour à la connexion"
