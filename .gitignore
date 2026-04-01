@@ -94,3 +94,4 @@ detailed_test.py
 generate_assets.py
 test_existing_credentials.py
 test_result.md
+.metro-cache/
