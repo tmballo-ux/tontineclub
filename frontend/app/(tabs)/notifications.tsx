@@ -90,23 +90,29 @@ export default function NotificationsScreen() {
 
   const handleNotifPress = (item: Notification) => {
     if (!item.is_read) markAsRead(item.id);
-    if (item.tontine_id) {
+    // Route based on notification type
+    const category = NOTIF_CATEGORIES[item.type];
+    if (category === 'invitations') {
+      // Navigate to invitations tab for invitation-related notifications
+      router.push('/(tabs)/invitations');
+    } else if (item.tontine_id) {
+      // Navigate to tontine detail for tontine-related notifications
       router.push(`/tontine/${item.tontine_id}`);
     }
   };
 
   const getNotifConfig = (type: string) => {
     switch (type) {
-      case 'invitation_received': return { icon: 'mail-unread', color: '#2563EB', bg: '#DBEAFE', priority: 'normal', action: 'Voir l\'invitation' };
-      case 'invitation_accepted': return { icon: 'checkmark-circle', color: '#059669', bg: '#D1FAE5', priority: 'normal', action: 'Voir la tontine' };
+      case 'invitation_received': return { icon: 'mail-unread', color: '#2563EB', bg: '#DBEAFE', priority: 'normal', action: t('notifications.viewInvitation') };
+      case 'invitation_accepted': return { icon: 'checkmark-circle', color: '#059669', bg: '#D1FAE5', priority: 'normal', action: t('notifications.viewTontine') };
       case 'invitation_rejected': return { icon: 'close-circle', color: '#6B7280', bg: '#F3F4F6', priority: 'low', action: null };
-      case 'payment_reminder': return { icon: 'alarm', color: '#D97706', bg: '#FEF3C7', priority: 'high', action: 'Payer maintenant' };
-      case 'payment_announced': return { icon: 'cash', color: '#D97706', bg: '#FEF3C7', priority: 'normal', action: 'Voir détails' };
-      case 'payment_confirmed': return { icon: 'checkmark-done', color: '#059669', bg: '#D1FAE5', priority: 'normal', action: 'Voir détails' };
-      case 'payment_contested': return { icon: 'alert-circle', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: 'Voir l\'impact' };
-      case 'cycle_started': return { icon: 'play-circle', color: '#7C3AED', bg: '#EDE9FE', priority: 'normal', action: 'Voir la tontine' };
-      case 'member_left': return { icon: 'person-remove', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: 'Voir l\'impact' };
-      case 'account_deleted': return { icon: 'trash', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: 'Voir l\'impact' };
+      case 'payment_reminder': return { icon: 'alarm', color: '#D97706', bg: '#FEF3C7', priority: 'high', action: t('notifications.payNow') };
+      case 'payment_announced': return { icon: 'cash', color: '#D97706', bg: '#FEF3C7', priority: 'normal', action: t('notifications.viewDetails') };
+      case 'payment_confirmed': return { icon: 'checkmark-done', color: '#059669', bg: '#D1FAE5', priority: 'normal', action: t('notifications.viewDetails') };
+      case 'payment_contested': return { icon: 'alert-circle', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: t('notifications.viewImpact') };
+      case 'cycle_started': return { icon: 'play-circle', color: '#7C3AED', bg: '#EDE9FE', priority: 'normal', action: t('notifications.viewTontine') };
+      case 'member_left': return { icon: 'person-remove', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: t('notifications.viewImpact') };
+      case 'account_deleted': return { icon: 'trash', color: '#DC2626', bg: '#FEE2E2', priority: 'high', action: t('notifications.viewImpact') };
       default: return { icon: 'notifications', color: '#6B7280', bg: '#F3F4F6', priority: 'low', action: null };
     }
   };
@@ -118,11 +124,11 @@ export default function NotificationsScreen() {
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `Il y a ${minutes}min`;
-    if (hours < 24) return `Il y a ${hours}h`;
-    if (days < 7) return `Il y a ${days}j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    if (minutes < 1) return t('notifications.justNow');
+    if (minutes < 60) return t('notifications.minutesAgo').replace('{count}', String(minutes));
+    if (hours < 24) return t('notifications.hoursAgo').replace('{count}', String(hours));
+    if (days < 7) return t('notifications.daysAgo').replace('{count}', String(days));
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   };
 
   const renderNotification = ({ item }: { item: Notification }) => {
@@ -149,7 +155,7 @@ export default function NotificationsScreen() {
               <Text style={styles.notifTime}>{formatDate(item.created_at)}</Text>
               {config.priority === 'high' && (
                 <View style={styles.priorityBadge}>
-                  <Text style={styles.priorityText}>Important</Text>
+                  <Text style={styles.priorityText}>{t('notifications.important')}</Text>
                 </View>
               )}
             </View>
@@ -171,7 +177,7 @@ export default function NotificationsScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
-          <Text style={styles.headerSubtitle}>{unreadCount} non lue{unreadCount !== 1 ? 's' : ''}</Text>
+          <Text style={styles.headerSubtitle}>{t('notifications.unread').replace('{count}', String(unreadCount)).replace('{plural}', unreadCount !== 1 ? 's' : '')}</Text>
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead}>

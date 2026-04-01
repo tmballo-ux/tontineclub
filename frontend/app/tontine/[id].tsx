@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Tontine, Member, Cycle, Contribution } from '@/src/store/tontineStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { Card } from '@/src/components/Card';
 import { Button } from '@/src/components/Button';
@@ -24,6 +25,7 @@ export default function TontineDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const {
     currentTontine,
     members,
@@ -90,17 +92,17 @@ export default function TontineDetailScreen() {
 
   const handleSendInvitation = async () => {
     if (!inviteEmail.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un email');
+      Alert.alert(t('create.error'), t('detail.emailRequired'));
       return;
     }
     setInviteLoading(true);
     try {
       await sendInvitation(id!, inviteEmail.trim());
-      Alert.alert('Succès', 'Invitation envoyée!');
+      Alert.alert(t('common.success'), t('detail.invitationSent'));
       setShowInviteModal(false);
       setInviteEmail('');
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert(t('create.error'), error.message);
     } finally {
       setInviteLoading(false);
     }
@@ -108,19 +110,19 @@ export default function TontineDetailScreen() {
 
   const handleStartTontine = () => {
     Alert.alert(
-      'Démarrer la tontine',
-      'Êtes-vous sûr de vouloir démarrer cette tontine? Les cycles seront générés automatiquement.',
+      t('detail.startTontine'),
+      t('detail.startConfirmText'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Démarrer',
+          text: t('detail.start'),
           onPress: async () => {
             try {
               await startTontine(id!);
-              Alert.alert('Succès', 'Tontine démarrée!');
+              Alert.alert(t('common.success'), t('detail.tontineStarted'));
               loadData();
             } catch (error: any) {
-              Alert.alert('Erreur', error.message);
+              Alert.alert(t('create.error'), error.message);
             }
           },
         },
@@ -132,55 +134,55 @@ export default function TontineDetailScreen() {
     if (!currentCycleData?.cycle) return;
     try {
       await declarePayment(currentCycleData.cycle.id);
-      Alert.alert('Succès', 'Paiement annoncé!');
+      Alert.alert(t('common.success'), t('detail.paymentDeclared'));
       loadData();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert(t('create.error'), error.message);
     }
   };
 
   const handleConfirmPayment = async (declarationId: string) => {
     try {
       await confirmPayment(declarationId);
-      Alert.alert('Succès', 'Paiement confirmé!');
+      Alert.alert(t('common.success'), t('detail.paymentConfirmed'));
       loadData();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert(t('create.error'), error.message);
     }
   };
 
   const handleContestPayment = async () => {
     if (!contestingId || !contestReason.trim()) {
-      Alert.alert('Erreur', 'Veuillez indiquer la raison');
+      Alert.alert(t('create.error'), t('detail.reasonRequired'));
       return;
     }
     try {
       await contestPayment(contestingId, contestReason.trim());
-      Alert.alert('Succès', 'Paiement contesté');
+      Alert.alert(t('common.success'), t('detail.paymentContested'));
       setShowContestModal(false);
       setContestReason('');
       setContestingId(null);
       loadData();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert(t('create.error'), error.message);
     }
   };
 
   const handleRandomizeOrder = () => {
     Alert.alert(
-      'Tirage aléatoire',
-      'Voulez-vous générer un ordre aléatoire pour les bénéficiaires?',
+      t('detail.randomDraw'),
+      t('detail.randomConfirmText'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Générer',
+          text: t('detail.generate'),
           onPress: async () => {
             try {
               await randomizeBeneficiaryOrder(id!);
-              Alert.alert('Succès', 'Ordre généré!');
+              Alert.alert(t('common.success'), t('detail.orderGenerated'));
               loadData();
             } catch (error: any) {
-              Alert.alert('Erreur', error.message);
+              Alert.alert(t('create.error'), error.message);
             }
           },
         },
@@ -196,7 +198,7 @@ export default function TontineDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <Text style={styles.loadingText}>{t('detail.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -224,7 +226,7 @@ export default function TontineDetailScreen() {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'overview' ? 'Aperçu' : tab === 'members' ? 'Membres' : tab === 'cycles' ? 'Cycles' : 'Paiements'}
+              {tab === 'overview' ? t('detail.overview') : tab === 'members' ? t('detail.members') : tab === 'cycles' ? t('detail.cycles') : t('detail.payments')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -241,18 +243,18 @@ export default function TontineDetailScreen() {
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
                   <Ionicons name="cash" size={24} color={colors.primary} />
-                  <Text style={styles.infoLabel}>Cotisation</Text>
+                  <Text style={styles.infoLabel}>{t('detail.contribution')}</Text>
                   <Text style={styles.infoValue}>{formatCurrency(currentTontine.contribution_amount)}</Text>
                 </View>
                 <View style={styles.infoItem}>
                   <Ionicons name="people" size={24} color={colors.primary} />
-                  <Text style={styles.infoLabel}>Membres</Text>
+                  <Text style={styles.infoLabel}>{t('detail.members')}</Text>
                   <Text style={styles.infoValue}>{currentTontine.current_members}/{currentTontine.max_members}</Text>
                 </View>
                 <View style={styles.infoItem}>
                   <Ionicons name="calendar" size={24} color={colors.primary} />
-                  <Text style={styles.infoLabel}>Fréquence</Text>
-                  <Text style={styles.infoValue}>{currentTontine.frequency === 'weekly' ? 'Hebdo' : 'Mensuel'}</Text>
+                  <Text style={styles.infoLabel}>{t('detail.frequency')}</Text>
+                  <Text style={styles.infoValue}>{currentTontine.frequency === 'weekly' ? t('detail.weeklyShort') : t('detail.monthlyShort')}</Text>
                 </View>
               </View>
             </Card>
@@ -261,29 +263,29 @@ export default function TontineDetailScreen() {
             {currentCycleData?.cycle && (
               <Card style={styles.cycleCard}>
                 <View style={styles.cycleHeader}>
-                  <Text style={styles.cycleTitle}>Cycle {currentCycleData.cycle.cycle_number}</Text>
+                  <Text style={styles.cycleTitle}>{t('detail.cycle', { number: currentCycleData.cycle.cycle_number })}</Text>
                   {isBeneficiary && (
                     <View style={styles.beneficiaryBadge}>
                       <Ionicons name="star" size={16} color={colors.warning} />
-                      <Text style={styles.beneficiaryBadgeText}>Vous êtes bénéficiaire</Text>
+                      <Text style={styles.beneficiaryBadgeText}>{t('detail.youAreBeneficiary')}</Text>
                     </View>
                   )}
                 </View>
                 <Text style={styles.cycleInfo}>
-                  Bénéficiaire: <Text style={styles.bold}>{currentCycleData.cycle.beneficiary_name}</Text>
+                  {t('detail.beneficiary')}: <Text style={styles.bold}>{currentCycleData.cycle.beneficiary_name}</Text>
                 </Text>
                 <Text style={styles.cycleInfo}>
-                  Période: {formatDate(currentCycleData.cycle.start_date)} - {formatDate(currentCycleData.cycle.end_date)}
+                  {t('detail.period')}: {formatDate(currentCycleData.cycle.start_date)} - {formatDate(currentCycleData.cycle.end_date)}
                 </Text>
 
                 {/* My Payment Status */}
                 {myContribution && !isBeneficiary && (
                   <View style={styles.myPaymentSection}>
-                    <Text style={styles.myPaymentTitle}>Mon paiement</Text>
+                    <Text style={styles.myPaymentTitle}>{t('detail.myPayment')}</Text>
                     <StatusBadge status={myContribution.status} />
                     {myContribution.status === 'not_announced' && (
                       <Button
-                        title="Annoncer mon paiement"
+                        title={t('detail.declarePayment')}
                         onPress={handleDeclarePayment}
                         size="sm"
                         style={styles.declareButton}
@@ -298,14 +300,14 @@ export default function TontineDetailScreen() {
             {isCreator && currentTontine.status === 'draft' && (
               <View style={styles.actions}>
                 <Button
-                  title="Inviter un membre"
+                  title={t('detail.inviteMember')}
                   onPress={() => setShowInviteModal(true)}
                   variant="outline"
                   icon={<Ionicons name="person-add" size={18} color={colors.primary} />}
                 />
                 {currentTontine.current_members >= 2 && (
                   <Button
-                    title="Démarrer la tontine"
+                    title={t('detail.startTontine')}
                     onPress={handleStartTontine}
                     icon={<Ionicons name="play" size={18} color={colors.white} />}
                   />
@@ -320,14 +322,14 @@ export default function TontineDetailScreen() {
             {isCreator && currentTontine.status === 'draft' && (
               <View style={styles.orderActions}>
                 <Button
-                  title="Tirage aléatoire"
+                  title={t('detail.randomDraw')}
                   onPress={handleRandomizeOrder}
                   variant="outline"
                   size="sm"
                   icon={<Ionicons name="shuffle" size={16} color={colors.primary} />}
                 />
                 <Button
-                  title="Inviter"
+                  title={t('detail.invite')}
                   onPress={() => setShowInviteModal(true)}
                   size="sm"
                   icon={<Ionicons name="person-add" size={16} color={colors.white} />}
@@ -346,7 +348,7 @@ export default function TontineDetailScreen() {
                   </View>
                   {member.user_id === currentTontine.creator_id && (
                     <View style={styles.creatorBadge}>
-                      <Text style={styles.creatorText}>Créateur</Text>
+                      <Text style={styles.creatorText}>{t('detail.creator')}</Text>
                     </View>
                   )}
                 </View>
@@ -364,12 +366,12 @@ export default function TontineDetailScreen() {
                   style={[styles.cycleListCard, cycle.is_current && styles.currentCycleCard]}
                 >
                   <View style={styles.cycleListHeader}>
-                    <Text style={styles.cycleListTitle}>Cycle {cycle.cycle_number}</Text>
+                    <Text style={styles.cycleListTitle}>{t('detail.cycle', { number: cycle.cycle_number })}</Text>
                     {cycle.is_current && <StatusBadge status="active" size="sm" />}
                     {cycle.is_completed && <StatusBadge status="completed" size="sm" />}
                   </View>
                   <Text style={styles.cycleListInfo}>
-                    Bénéficiaire: {cycle.beneficiary_name}
+                    {t('detail.beneficiary')}: {cycle.beneficiary_name}
                   </Text>
                   <Text style={styles.cycleListDate}>
                     {formatDate(cycle.start_date)} - {formatDate(cycle.end_date)}
@@ -379,7 +381,7 @@ export default function TontineDetailScreen() {
             ) : (
               <Card style={styles.emptyCard}>
                 <Ionicons name="calendar-outline" size={48} color={colors.textLight} />
-                <Text style={styles.emptyText}>Les cycles seront générés au démarrage</Text>
+                <Text style={styles.emptyText}>{t('detail.cyclesGeneratedOnStart')}</Text>
               </Card>
             )}
           </>
@@ -387,7 +389,7 @@ export default function TontineDetailScreen() {
 
         {activeTab === 'payments' && currentCycleData?.contributions && (
           <>
-            <Text style={styles.paymentsTitle}>Cycle {currentCycleData.cycle.cycle_number}</Text>
+            <Text style={styles.paymentsTitle}>{t('detail.cycle', { number: currentCycleData.cycle.cycle_number })}</Text>
             {currentCycleData.contributions.map((contribution) => (
               <Card key={contribution.id} style={styles.paymentCard}>
                 <View style={styles.paymentRow}>
@@ -416,7 +418,7 @@ export default function TontineDetailScreen() {
                   )}
                 </View>
                 {contribution.contest_reason && (
-                  <Text style={styles.contestReason}>Raison: {contribution.contest_reason}</Text>
+                  <Text style={styles.contestReason}>{t('detail.reason')}: {contribution.contest_reason}</Text>
                 )}
               </Card>
             ))}
@@ -428,10 +430,10 @@ export default function TontineDetailScreen() {
       <Modal visible={showInviteModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Inviter un membre</Text>
+            <Text style={styles.modalTitle}>{t('detail.inviteMember')}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Email du membre"
+              placeholder={t('detail.memberEmail')}
               value={inviteEmail}
               onChangeText={setInviteEmail}
               keyboardType="email-address"
@@ -439,7 +441,7 @@ export default function TontineDetailScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Annuler"
+                title={t('common.cancel')}
                 onPress={() => {
                   setShowInviteModal(false);
                   setInviteEmail('');
@@ -448,7 +450,7 @@ export default function TontineDetailScreen() {
                 style={styles.modalButton}
               />
               <Button
-                title="Envoyer"
+                title={t('detail.send')}
                 onPress={handleSendInvitation}
                 loading={inviteLoading}
                 style={styles.modalButton}
@@ -462,10 +464,10 @@ export default function TontineDetailScreen() {
       <Modal visible={showContestModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Contester le paiement</Text>
+            <Text style={styles.modalTitle}>{t('detail.contestPayment')}</Text>
             <TextInput
               style={[styles.modalInput, styles.textArea]}
-              placeholder="Raison de la contestation"
+              placeholder={t('detail.contestReason')}
               value={contestReason}
               onChangeText={setContestReason}
               multiline
@@ -473,7 +475,7 @@ export default function TontineDetailScreen() {
             />
             <View style={styles.modalActions}>
               <Button
-                title="Annuler"
+                title={t('common.cancel')}
                 onPress={() => {
                   setShowContestModal(false);
                   setContestReason('');
@@ -483,7 +485,7 @@ export default function TontineDetailScreen() {
                 style={styles.modalButton}
               />
               <Button
-                title="Contester"
+                title={t('detail.contest')}
                 onPress={handleContestPayment}
                 style={[styles.modalButton, { backgroundColor: colors.error }]}
               />

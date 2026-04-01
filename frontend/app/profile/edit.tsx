@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -21,6 +22,7 @@ import { Card } from '@/src/components/Card';
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateProfile } = useAuthStore();
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState(user?.full_name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -29,8 +31,8 @@ export default function EditProfileScreen() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!fullName.trim()) newErrors.fullName = 'Nom requis';
-    if (!phone.trim()) newErrors.phone = 'Téléphone requis';
+    if (!fullName.trim()) newErrors.fullName = t('auth.fullNameRequired');
+    if (!phone.trim()) newErrors.phone = t('auth.phoneRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,10 +46,10 @@ export default function EditProfileScreen() {
         full_name: fullName.trim(),
         phone: phone.trim(),
       });
-      Alert.alert('Succès', 'Profil mis à jour!');
+      Alert.alert(t('common.success'), t('profile.profileUpdated'));
       router.back();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert(t('common.error'), error.message);
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export default function EditProfileScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Modifier le profil</Text>
+          <Text style={styles.headerTitle}>{t('profile.editProfileTitle')}</Text>
           <View style={styles.placeholder} />
         </View>
 

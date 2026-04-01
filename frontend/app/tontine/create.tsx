@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Currency } from '@/src/store/tontineStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -45,6 +46,7 @@ export default function CreateTontineScreen() {
   const router = useRouter();
   const { createTontine } = useTontineStore();
   const { isAuthenticated, token } = useAuthStore();
+  const { t } = useTranslation();
 
   // Rediriger vers login si non connecté
   useEffect(() => {
@@ -68,13 +70,13 @@ export default function CreateTontineScreen() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Nom requis';
-    if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Montant invalide';
-    if (!maxMembers || parseInt(maxMembers) < 2) newErrors.maxMembers = 'Minimum 2 membres';
+    if (!name.trim()) newErrors.name = t('create.nameRequired');
+    if (!amount || parseFloat(amount) <= 0) newErrors.amount = t('create.invalidAmount');
+    if (!maxMembers || parseInt(maxMembers) < 2) newErrors.maxMembers = t('create.minMembers');
     
     // Permettre les dates à partir du 1er janvier de l'année en cours
     const minDate = new Date(new Date().getFullYear(), 0, 1);
-    if (startDate < minDate) newErrors.startDate = 'Date invalide';
+    if (startDate < minDate) newErrors.startDate = t('create.invalidDate');
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -99,9 +101,9 @@ export default function CreateTontineScreen() {
     } catch (error: any) {
       // Utiliser window.alert pour le web comme fallback
       if (typeof window !== 'undefined' && window.alert) {
-        window.alert('Erreur: ' + error.message);
+        window.alert(t('create.error') + ': ' + error.message);
       } else {
-        Alert.alert('Erreur', error.message);
+        Alert.alert(t('create.error'), error.message);
       }
     } finally {
       setLoading(false);
@@ -121,7 +123,7 @@ export default function CreateTontineScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Nouvelle Tontine</Text>
+          <Text style={styles.headerTitle}>{t('create.title')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -131,19 +133,19 @@ export default function CreateTontineScreen() {
         >
           <Card style={styles.formCard}>
             <Input
-              label="Nom de la tontine *"
+              label={t('create.nameLabel')}
               value={name}
               onChangeText={setName}
-              placeholder="Ex: Tontine Famille"
+              placeholder={t('create.namePlaceholder')}
               icon="wallet-outline"
               error={errors.name}
             />
 
             <Input
-              label="Description (optionnel)"
+              label={t('create.descriptionLabel')}
               value={description}
               onChangeText={setDescription}
-              placeholder="Décrivez l'objectif de cette tontine"
+              placeholder={t('create.descriptionPlaceholder')}
               icon="document-text-outline"
               multiline
               numberOfLines={3}
@@ -151,7 +153,7 @@ export default function CreateTontineScreen() {
 
             {/* Currency Selection */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Devise *</Text>
+              <Text style={styles.label}>{t('create.currencyLabel')}</Text>
               <View style={styles.currencyOptions}>
                 {CURRENCIES.map((curr) => (
                   <TouchableOpacity
@@ -176,10 +178,10 @@ export default function CreateTontineScreen() {
             </View>
 
             <Input
-              label={`Montant de la cotisation (${currencySymbol}) *`}
+              label={t('create.amountLabel', { symbol: currencySymbol })}
               value={amount}
               onChangeText={setAmount}
-              placeholder="Ex: 50000"
+              placeholder={t('create.amountPlaceholder')}
               keyboardType="numeric"
               icon="cash-outline"
               error={errors.amount}
@@ -187,7 +189,7 @@ export default function CreateTontineScreen() {
 
             {/* Frequency Selection */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Fréquence *</Text>
+              <Text style={styles.label}>{t('create.frequencyLabel')}</Text>
               <View style={styles.frequencyOptions}>
                 <TouchableOpacity
                   style={[
@@ -207,7 +209,7 @@ export default function CreateTontineScreen() {
                       frequency === 'weekly' && styles.frequencyTextActive,
                     ]}
                   >
-                    Hebdomadaire
+                    {t('common.weekly')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -228,17 +230,17 @@ export default function CreateTontineScreen() {
                       frequency === 'monthly' && styles.frequencyTextActive,
                     ]}
                   >
-                    Mensuel
+                    {t('common.monthly')}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <Input
-              label="Nombre de membres *"
+              label={t('create.membersLabel')}
               value={maxMembers}
               onChangeText={setMaxMembers}
-              placeholder="Ex: 10"
+              placeholder={t('create.membersPlaceholder')}
               keyboardType="numeric"
               icon="people-outline"
               error={errors.maxMembers}
@@ -246,25 +248,25 @@ export default function CreateTontineScreen() {
 
             {/* Date Picker */}
             <DatePicker
-              label="Date de début *"
+              label={t('create.startDateLabel')}
               value={startDate}
               onChange={setStartDate}
-              minimumDate={new Date(new Date().getFullYear(), 0, 1)} // 1er janvier de l'année en cours
+              minimumDate={new Date(new Date().getFullYear(), 0, 1)}
               error={errors.startDate}
             />
           </Card>
 
           {/* Summary Card */}
           <Card style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Résumé</Text>
+            <Text style={styles.summaryTitle}>{t('create.summaryTitle')}</Text>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Cotisation par cycle</Text>
+              <Text style={styles.summaryLabel}>{t('create.contributionPerCycle')}</Text>
               <Text style={styles.summaryValue}>
                 {amount ? formatCurrencyAmount(parseInt(amount), currency) : '-'}
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Cagnotte totale</Text>
+              <Text style={styles.summaryLabel}>{t('create.totalPot')}</Text>
               <Text style={styles.summaryValue}>
                 {amount && maxMembers
                   ? formatCurrencyAmount(parseInt(amount) * parseInt(maxMembers), currency)
@@ -272,17 +274,17 @@ export default function CreateTontineScreen() {
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Durée totale</Text>
+              <Text style={styles.summaryLabel}>{t('create.totalDuration')}</Text>
               <Text style={styles.summaryValue}>
                 {maxMembers
-                  ? `${parseInt(maxMembers)} ${frequency === 'weekly' ? 'semaines' : 'mois'}`
+                  ? `${parseInt(maxMembers)} ${frequency === 'weekly' ? t('create.weeks') : t('create.months')}`
                   : '-'}
               </Text>
             </View>
           </Card>
 
           <Button
-            title="Créer la tontine"
+            title={t('create.createButton')}
             onPress={handleCreate}
             loading={loading}
             size="lg"

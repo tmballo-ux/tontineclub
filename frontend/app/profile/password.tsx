@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useAuthStore } from '@/src/store/authStore';
+import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -24,6 +25,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { token } = useAuthStore();
+  const { t } = useTranslation();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -33,10 +35,10 @@ export default function ChangePasswordScreen() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!currentPassword) newErrors.currentPassword = 'Mot de passe actuel requis';
-    if (!newPassword) newErrors.newPassword = 'Nouveau mot de passe requis';
-    else if (newPassword.length < 6) newErrors.newPassword = 'Minimum 6 caractères';
-    if (newPassword !== confirmPassword) newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+    if (!currentPassword) newErrors.currentPassword = t('profile.currentPasswordRequired');
+    if (!newPassword) newErrors.newPassword = t('profile.newPasswordRequired');
+    else if (newPassword.length < 6) newErrors.newPassword = t('auth.passwordMinLength');
+    if (newPassword !== confirmPassword) newErrors.confirmPassword = t('auth.passwordMismatch');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -53,16 +55,16 @@ export default function ChangePasswordScreen() {
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      Alert.alert('Succès', 'Mot de passe modifié avec succès!');
+      Alert.alert(t('common.success'), t('profile.passwordChanged'));
       router.back();
     } catch (error: any) {
       const detail = error.response?.data?.detail;
       if (detail) {
-        Alert.alert('Erreur', detail);
+        Alert.alert(t('common.error'), detail);
       } else if (error.code === 'ERR_NETWORK') {
-        Alert.alert('Erreur', 'Erreur réseau. Vérifiez votre connexion.');
+        Alert.alert(t('common.error'), t('profile.networkError'));
       } else {
-        Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+        Alert.alert(t('common.error'), t('profile.genericError'));
       }
     } finally {
       setLoading(false);
@@ -79,37 +81,37 @@ export default function ChangePasswordScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Changer le mot de passe</Text>
+          <Text style={styles.headerTitle}>{t('profile.changePasswordTitle')}</Text>
           <View style={styles.placeholder} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Card style={styles.formCard}>
             <Input
-              label="Mot de passe actuel"
+              label={t('profile.currentPasswordLabel')}
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              placeholder="Entrez votre mot de passe actuel"
+              placeholder={t('profile.currentPasswordPlaceholder')}
               isPassword
               icon="lock-closed-outline"
               error={errors.currentPassword}
             />
 
             <Input
-              label="Nouveau mot de passe"
+              label={t('profile.newPasswordLabel')}
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="Minimum 6 caractères"
+              placeholder={t('profile.newPasswordPlaceholder')}
               isPassword
               icon="lock-closed-outline"
               error={errors.newPassword}
             />
 
             <Input
-              label="Confirmer le nouveau mot de passe"
+              label={t('profile.confirmNewPasswordLabel')}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Répétez le nouveau mot de passe"
+              placeholder={t('profile.confirmNewPasswordPlaceholder')}
               isPassword
               icon="lock-closed-outline"
               error={errors.confirmPassword}
@@ -117,7 +119,7 @@ export default function ChangePasswordScreen() {
           </Card>
 
           <Button
-            title="Modifier le mot de passe"
+            title={t('profile.changePasswordButton')}
             onPress={handleSave}
             loading={loading}
             size="lg"

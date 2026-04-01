@@ -6,7 +6,8 @@ import { useTontineStore } from '@/src/store/tontineStore';
 import { useSubscriptionStore } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PaywallView from '@/src/components/PaywallView';
 
 export default function TabsLayout() {
@@ -14,6 +15,9 @@ export default function TabsLayout() {
   const { isAuthenticated } = useAuthStore();
   const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+
+  const tabBarBottomPadding = Math.max(insets.bottom, 8);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -49,9 +53,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          paddingBottom: 8,
+          paddingBottom: tabBarBottomPadding,
           paddingTop: 8,
-          height: 65,
+          height: 60 + tabBarBottomPadding,
         },
         tabBarLabelStyle: {
           fontSize: 12,

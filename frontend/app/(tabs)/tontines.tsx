@@ -135,7 +135,7 @@ export default function TontinesScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>{t('tontines.myTontines')}</Text>
-          <Text style={styles.subtitle}>{enrichedTontines.length} tontine{enrichedTontines.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.subtitle}>{t('tontines.tontineCount', { count: enrichedTontines.length, plural: enrichedTontines.length !== 1 ? 's' : '' })}</Text>
         </View>
         <TouchableOpacity
           style={styles.addButton}
@@ -267,7 +267,8 @@ interface TontineCardProps {
 }
 
 function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
-  const statusConfig = getStatusConfig(tontine.status);
+  const { t } = useTranslation();
+  const statusConfig = getStatusConfig(tontine.status, t);
   const progressPercent = tontine.total_cycles > 0
     ? Math.round((tontine.cycles_completed / tontine.total_cycles) * 100)
     : 0;
@@ -286,7 +287,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
   };
 
   // Quick actions based on status
-  const actions = getQuickActions(tontine.status, tontine.is_creator);
+  const actions = getQuickActions(tontine.status, tontine.is_creator, t);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
@@ -311,7 +312,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
               <Ionicons name="people" size={14} color="#2563EB" />
             </View>
             <View>
-              <Text style={styles.infoLabel}>Membres</Text>
+              <Text style={styles.infoLabel}>{t('tontines.members')}</Text>
               <Text style={styles.infoValue}>{tontine.current_members}/{tontine.max_members}</Text>
             </View>
           </View>
@@ -320,7 +321,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
               <Ionicons name="cash" size={14} color="#D97706" />
             </View>
             <View>
-              <Text style={styles.infoLabel}>Cotisation</Text>
+              <Text style={styles.infoLabel}>{t('tontines.contribution')}</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
                 {formatCurrency(tontine.contribution_amount, tontine.currency || 'XOF')}
               </Text>
@@ -333,7 +334,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
               <Ionicons name="wallet" size={14} color="#059669" />
             </View>
             <View>
-              <Text style={styles.infoLabel}>Cagnotte</Text>
+              <Text style={styles.infoLabel}>{t('tontines.pot')}</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
                 {formatCurrency(tontine.total_pot || 0, tontine.currency || 'XOF')}
               </Text>
@@ -344,9 +345,9 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
               <Ionicons name="calendar" size={14} color="#7C3AED" />
             </View>
             <View>
-              <Text style={styles.infoLabel}>Échéance</Text>
+              <Text style={styles.infoLabel}>{t('tontines.deadline')}</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
-                {formatDate(tontine.next_payment_date) || 'Non définie'}
+                {formatDate(tontine.next_payment_date) || t('tontines.notDefined')}
               </Text>
             </View>
           </View>
@@ -358,7 +359,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
         {tontine.user_position > 0 && (
           <View style={styles.metaChip}>
             <Ionicons name="swap-vertical" size={12} color={colors.primary} />
-            <Text style={styles.metaChipText}>Votre tour : {tontine.user_position}ème</Text>
+            <Text style={styles.metaChipText}>{t('tontines.yourTurn', { position: tontine.user_position })}</Text>
           </View>
         )}
         <View style={styles.metaChip}>
@@ -370,7 +371,7 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
           <Text style={[styles.metaChipText, {
             color: tontine.payment_reliability >= 80 ? '#059669' : '#D97706'
           }]}>
-            Fiabilité : {tontine.payment_reliability}%
+            {t('tontines.reliability', { percent: tontine.payment_reliability })}
           </Text>
         </View>
       </View>
@@ -378,8 +379,8 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
       {/* Progress Bar */}
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>Progression</Text>
-          <Text style={styles.progressValue}>{tontine.cycles_completed}/{tontine.total_cycles} cycles ({progressPercent}%)</Text>
+          <Text style={styles.progressLabel}>{t('tontines.progress')}</Text>
+          <Text style={styles.progressValue}>{t('tontines.cycles', { completed: tontine.cycles_completed, total: tontine.total_cycles, percent: progressPercent })}</Text>
         </View>
         <View style={styles.progressBarBg}>
           <View
@@ -421,22 +422,23 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
 // ============ EMPTY STATE ============
 
 function EmptyState({ filter, onCreatePress }: { filter: FilterType; onCreatePress: () => void }) {
+  const { t } = useTranslation();
   const messages: Record<FilterType, { title: string; text: string }> = {
     all: {
-      title: 'Aucune tontine pour le moment',
-      text: 'Créez votre première tontine et invitez vos proches à épargner ensemble.',
+      title: t('tontines.emptyAll'),
+      text: t('tontines.emptyAllText'),
     },
     active: {
-      title: 'Aucune tontine active',
-      text: 'Vos tontines actives apparaîtront ici une fois démarrées.',
+      title: t('tontines.emptyActive'),
+      text: t('tontines.emptyActiveText'),
     },
     draft: {
-      title: 'Aucun brouillon',
-      text: 'Vos tontines en cours de préparation apparaîtront ici.',
+      title: t('tontines.emptyDraft'),
+      text: t('tontines.emptyDraftText'),
     },
     completed: {
-      title: 'Aucune tontine terminée',
-      text: 'Vos tontines terminées apparaîtront ici.',
+      title: t('tontines.emptyCompleted'),
+      text: t('tontines.emptyCompletedText'),
     },
   };
 
@@ -452,7 +454,7 @@ function EmptyState({ filter, onCreatePress }: { filter: FilterType; onCreatePre
       {filter === 'all' && (
         <TouchableOpacity style={styles.emptyButton} onPress={onCreatePress} activeOpacity={0.8}>
           <Ionicons name="add-circle" size={20} color={colors.white} />
-          <Text style={styles.emptyButtonText}>Créer une tontine</Text>
+          <Text style={styles.emptyButtonText}>{t('tontines.createTontine')}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -461,40 +463,40 @@ function EmptyState({ filter, onCreatePress }: { filter: FilterType; onCreatePre
 
 // ============ HELPERS ============
 
-function getStatusConfig(status: string) {
+function getStatusConfig(status: string, t: (key: string) => string) {
   switch (status) {
     case 'active':
-      return { label: 'Active', color: '#059669', bg: '#D1FAE5' };
+      return { label: t('tontines.statusActive'), color: '#059669', bg: '#D1FAE5' };
     case 'draft':
-      return { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6' };
+      return { label: t('tontines.statusDraft'), color: '#6B7280', bg: '#F3F4F6' };
     case 'completed':
-      return { label: 'Terminée', color: '#2563EB', bg: '#DBEAFE' };
+      return { label: t('tontines.statusCompleted'), color: '#2563EB', bg: '#DBEAFE' };
     default:
       return { label: status, color: '#6B7280', bg: '#F3F4F6' };
   }
 }
 
-function getQuickActions(status: string, isCreator: boolean) {
+function getQuickActions(status: string, isCreator: boolean, t: (key: string) => string) {
   switch (status) {
     case 'draft':
       return [
-        { key: 'edit', label: 'Modifier', icon: 'create-outline' },
-        { key: 'invite', label: 'Inviter', icon: 'person-add-outline' },
+        { key: 'edit', label: t('tontines.edit'), icon: 'create-outline' },
+        { key: 'invite', label: t('tontines.invite'), icon: 'person-add-outline' },
       ];
     case 'active':
       return [
-        { key: 'pay', label: 'Payer', icon: 'card-outline' },
-        { key: 'details', label: 'Détails', icon: 'eye-outline' },
-        { key: 'invite', label: 'Inviter', icon: 'person-add-outline' },
+        { key: 'pay', label: t('tontines.pay'), icon: 'card-outline' },
+        { key: 'details', label: t('tontines.details'), icon: 'eye-outline' },
+        { key: 'invite', label: t('tontines.invite'), icon: 'person-add-outline' },
       ];
     case 'completed':
       return [
-        { key: 'history', label: 'Historique', icon: 'time-outline' },
-        { key: 'details', label: 'Détails', icon: 'eye-outline' },
+        { key: 'history', label: t('tontines.history'), icon: 'time-outline' },
+        { key: 'details', label: t('tontines.details'), icon: 'eye-outline' },
       ];
     default:
       return [
-        { key: 'details', label: 'Détails', icon: 'eye-outline' },
+        { key: 'details', label: t('tontines.details'), icon: 'eye-outline' },
       ];
   }
 }

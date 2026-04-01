@@ -75,11 +75,11 @@ export default function InvitationsScreen() {
     setErrorMessage(null);
     try {
       await acceptInvitation(inv.id);
-      setSuccessMessage(`Vous avez rejoint "${inv.tontine_name}" avec succès !`);
+      setSuccessMessage(t('invitations.joinedSuccess', { name: inv.tontine_name }));
       setConfirmAcceptId(null);
       await fetchEnrichedInvitations();
     } catch (error: any) {
-      setErrorMessage(error.message || "Erreur lors de l'acceptation");
+      setErrorMessage(error.message || t('invitations.acceptError'));
     } finally {
       setLoadingId(null);
     }
@@ -90,11 +90,11 @@ export default function InvitationsScreen() {
     setErrorMessage(null);
     try {
       await rejectInvitation(inv.id);
-      setSuccessMessage(`Invitation pour "${inv.tontine_name}" refusée.`);
+      setSuccessMessage(t('invitations.rejectedSuccess', { name: inv.tontine_name }));
       setConfirmRejectId(null);
       await fetchEnrichedInvitations();
     } catch (error: any) {
-      setErrorMessage(error.message || 'Erreur lors du refus');
+      setErrorMessage(error.message || t('invitations.rejectError'));
     } finally {
       setLoadingId(null);
     }
@@ -260,8 +260,8 @@ function InvitationCard({
 
   const getFreqLabel = (f: string) => {
     switch (f) {
-      case 'weekly': return 'Hebdomadaire';
-      case 'monthly': return 'Mensuel';
+      case 'weekly': return t('common.weekly');
+      case 'monthly': return t('common.monthly');
       default: return f;
     }
   };
@@ -294,12 +294,12 @@ function InvitationCard({
       {td && (
         <View style={styles.infoGrid}>
           <View style={styles.infoRow}>
-            <InfoItem icon="people" color="#2563EB" bg="#DBEAFE" label="Membres" value={`${td.current_members}/${td.max_members}`} />
-            <InfoItem icon="cash" color="#D97706" bg="#FEF3C7" label="Cotisation" value={formatCurrency(td.contribution_amount, td.currency as any || 'XOF')} />
+            <InfoItem icon="people" color="#2563EB" bg="#DBEAFE" label={t('tontines.members')} value={`${td.current_members}/${td.max_members}`} />
+            <InfoItem icon="cash" color="#D97706" bg="#FEF3C7" label={t('tontines.contribution')} value={formatCurrency(td.contribution_amount, td.currency as any || 'XOF')} />
           </View>
           <View style={styles.infoRow}>
-            <InfoItem icon="wallet" color="#059669" bg="#D1FAE5" label="Cagnotte" value={formatCurrency(td.total_pot, td.currency as any || 'XOF')} />
-            <InfoItem icon="repeat" color="#7C3AED" bg="#EDE9FE" label="Fréquence" value={getFreqLabel(td.frequency)} />
+            <InfoItem icon="wallet" color="#059669" bg="#D1FAE5" label={t('tontines.pot')} value={formatCurrency(td.total_pot, td.currency as any || 'XOF')} />
+            <InfoItem icon="repeat" color="#7C3AED" bg="#EDE9FE" label={t('invitations.frequency')} value={getFreqLabel(td.frequency)} />
           </View>
         </View>
       )}
@@ -320,7 +320,7 @@ function InvitationCard({
       {td && (
         <TouchableOpacity style={styles.detailsToggle} onPress={onToggleExpand} activeOpacity={0.7}>
           <Text style={styles.detailsToggleText}>
-            {isExpanded ? 'Masquer les détails' : 'Voir les détails avant de décider'}
+            {isExpanded ? t('invitations.hideDetails') : t('invitations.showDetails')}
           </Text>
           <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.primary} />
         </TouchableOpacity>
@@ -331,17 +331,17 @@ function InvitationCard({
         <View style={styles.expandedDetails}>
           {td.description && (
             <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>Description</Text>
+              <Text style={styles.detailSectionTitle}>{t('invitations.description')}</Text>
               <Text style={styles.detailSectionText}>{td.description}</Text>
             </View>
           )}
           <View style={styles.detailSection}>
-            <Text style={styles.detailSectionTitle}>Date de début</Text>
+            <Text style={styles.detailSectionTitle}>{t('invitations.startDate')}</Text>
             <Text style={styles.detailSectionText}>{formatDate(td.start_date)}</Text>
           </View>
           {td.member_names.length > 0 && (
             <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>Membres actuels ({td.member_names.length})</Text>
+              <Text style={styles.detailSectionTitle}>{t('invitations.currentMembers', { count: td.member_names.length })}</Text>
               {td.member_names.map((name, i) => (
                 <View key={i} style={styles.memberItem}>
                   <Ionicons name="person-circle" size={16} color={colors.textSecondary} />
@@ -361,10 +361,10 @@ function InvitationCard({
             <View style={styles.confirmBox}>
               <View style={styles.confirmIconRow}>
                 <Ionicons name="information-circle" size={18} color="#D97706" />
-                <Text style={styles.confirmTitle}>Confirmation</Text>
+                <Text style={styles.confirmTitle}>{t('invitations.confirmTitle')}</Text>
               </View>
               <Text style={styles.confirmText}>
-                En rejoignant cette tontine, vous vous engagez à effectuer les paiements selon les règles définies.
+                {t('invitations.confirmJoinText')}
               </Text>
               <View style={styles.confirmActions}>
                 <TouchableOpacity
@@ -375,7 +375,7 @@ function InvitationCard({
                 >
                   <Ionicons name="checkmark" size={16} color={colors.white} />
                   <Text style={styles.confirmAcceptText}>
-                    {isActionLoading ? 'En cours...' : 'Confirmer'}
+                    {isActionLoading ? t('common.inProgress') : t('common.confirm')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -383,14 +383,14 @@ function InvitationCard({
                   onPress={() => setConfirmAcceptId(null)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.confirmCancelText}>Annuler</Text>
+                  <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : confirmRejectId === invitation.id ? (
             <View style={styles.confirmBox}>
               <Text style={styles.confirmText}>
-                Êtes-vous sûr de vouloir refuser cette invitation ?
+                {t('invitations.confirmRejectText')}
               </Text>
               <View style={styles.confirmActions}>
                 <TouchableOpacity
@@ -400,7 +400,7 @@ function InvitationCard({
                   activeOpacity={0.8}
                 >
                   <Text style={styles.confirmRejectText}>
-                    {isActionLoading ? 'En cours...' : 'Oui, refuser'}
+                    {isActionLoading ? t('common.inProgress') : t('invitations.yesReject')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -408,7 +408,7 @@ function InvitationCard({
                   onPress={() => setConfirmRejectId(null)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.confirmCancelText}>Annuler</Text>
+                  <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -440,7 +440,7 @@ function InvitationCard({
         <View style={styles.historyFooter}>
           <Ionicons name={invitation.status === 'accepted' ? 'checkmark-circle' : 'close-circle'} size={16} color={statusConfig.color} />
           <Text style={[styles.historyFooterText, { color: statusConfig.color }]}>
-            {invitation.status === 'accepted' ? 'Vous avez rejoint cette tontine' : 'Invitation refusée'}
+            {invitation.status === 'accepted' ? t('invitations.joinedTontine') : t('invitations.rejectedInvitation')}
           </Text>
         </View>
       )}
