@@ -132,8 +132,62 @@ export default function NotificationsScreen() {
     return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   };
 
+  // Translate notification title and message based on type and metadata
+  const translateNotification = (item: Notification) => {
+    const meta = (item as any).metadata;
+    // If no metadata, this is an old notification - use stored text as fallback
+    if (!meta) {
+      return { title: item.title, message: item.message };
+    }
+    switch (item.type) {
+      case 'trial_started':
+        return {
+          title: t('notifications.trialStartedTitle'),
+          message: t('notifications.trialStartedMessage', { days: meta.trial_days || 7 }),
+        };
+      case 'invitation_received':
+        return {
+          title: t('notifications.invitationReceivedTitle'),
+          message: t('notifications.invitationReceivedMessage', { user: meta.user_name || '', tontine: meta.tontine_name || '' }),
+        };
+      case 'invitation_accepted':
+        return {
+          title: t('notifications.invitationAcceptedTitle'),
+          message: t('notifications.invitationAcceptedMessage', { user: meta.user_name || '', tontine: meta.tontine_name || '' }),
+        };
+      case 'invitation_rejected':
+        return {
+          title: t('notifications.invitationRejectedTitle'),
+          message: t('notifications.invitationRejectedMessage', { user: meta.user_name || '', tontine: meta.tontine_name || '' }),
+        };
+      case 'cycle_started':
+        return {
+          title: t('notifications.cycleStartedTitle'),
+          message: t('notifications.cycleStartedMessage', { tontine: meta.tontine_name || '' }),
+        };
+      case 'payment_announced':
+        return {
+          title: t('notifications.paymentAnnouncedTitle'),
+          message: t('notifications.paymentAnnouncedMessage', { user: meta.user_name || '', tontine: meta.tontine_name || '' }),
+        };
+      case 'payment_confirmed':
+        return {
+          title: t('notifications.paymentConfirmedTitle'),
+          message: t('notifications.paymentConfirmedMessage', { tontine: meta.tontine_name || '' }),
+        };
+      case 'payment_contested':
+        return {
+          title: t('notifications.paymentContestedTitle'),
+          message: t('notifications.paymentContestedMessage', { tontine: meta.tontine_name || '' }),
+        };
+      default:
+        return { title: item.title, message: item.message };
+    }
+  };
+
   const renderNotification = ({ item }: { item: Notification }) => {
     const config = getNotifConfig(item.type);
+    const translated = translateNotification(item);
     return (
       <TouchableOpacity
         style={[styles.notifCard, !item.is_read && styles.notifCardUnread]}
@@ -147,11 +201,11 @@ export default function NotificationsScreen() {
           <View style={styles.notifContent}>
             <View style={styles.notifTitleRow}>
               <Text style={[styles.notifTitle, !item.is_read && styles.notifTitleUnread]} numberOfLines={1}>
-                {item.title}
+                {translated.title}
               </Text>
               {!item.is_read && <View style={styles.unreadDot} />}
             </View>
-            <Text style={styles.notifMessage} numberOfLines={2}>{item.message}</Text>
+            <Text style={styles.notifMessage} numberOfLines={2}>{translated.message}</Text>
             <View style={styles.notifFooter}>
               <Text style={styles.notifTime}>{formatDate(item.created_at)}</Text>
               {config.priority === 'high' && (

@@ -209,6 +209,23 @@ export const fr = {
     viewImpact: "Voir l'impact",
     emptyTitle: 'Aucune notification',
     emptySubtitle: 'Les nouvelles invitations, rappels et mises à jour apparaîtront ici',
+    // Translated notification content
+    trialStartedTitle: 'Essai gratuit activé !',
+    trialStartedMessage: 'Votre essai gratuit de {days} jours a commencé. Profitez de toutes les fonctionnalités TontineClub Premium.',
+    invitationReceivedTitle: 'Nouvelle invitation',
+    invitationReceivedMessage: '{user} vous invite à rejoindre la tontine "{tontine}"',
+    invitationAcceptedTitle: 'Invitation acceptée',
+    invitationAcceptedMessage: '{user} a accepté votre invitation pour "{tontine}"',
+    invitationRejectedTitle: 'Invitation refusée',
+    invitationRejectedMessage: '{user} a refusé votre invitation pour "{tontine}"',
+    cycleStartedTitle: 'Tontine démarrée',
+    cycleStartedMessage: 'La tontine "{tontine}" a démarré !',
+    paymentAnnouncedTitle: 'Paiement annoncé',
+    paymentAnnouncedMessage: '{user} a annoncé son paiement pour "{tontine}"',
+    paymentConfirmedTitle: 'Paiement confirmé',
+    paymentConfirmedMessage: 'Votre paiement pour "{tontine}" a été confirmé',
+    paymentContestedTitle: 'Paiement contesté',
+    paymentContestedMessage: 'Un paiement a été contesté dans "{tontine}"',
   },
 
   // Profile

@@ -276,6 +276,7 @@ class Notification(BaseModel):
     title: str
     message: str
     tontine_id: Optional[str] = None
+    metadata: Optional[dict] = None
     is_read: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -310,13 +311,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token invalide")
 
-async def create_notification(user_id: str, notif_type: NotificationType, title: str, message: str, tontine_id: str = None):
+async def create_notification(user_id: str, notif_type: NotificationType, title: str, message: str, tontine_id: str = None, metadata: dict = None):
     notification = Notification(
         user_id=user_id,
         type=notif_type,
         title=title,
         message=message,
-        tontine_id=tontine_id
+        tontine_id=tontine_id,
+        metadata=metadata
     )
     await db.notifications.insert_one(notification.dict())
     return notification
@@ -676,8 +678,50 @@ async def send_invitation(invitation_data: InvitationCreate, current_user: dict 
             notif_type=NotificationType.INVITATION_RECEIVED,
             title="Nouvelle invitation",
             message=f"{current_user['full_name']} vous invite à rejoindre la tontine '{tontine['name']}'",
-            tontine_id=tontine["id"]
+            tontine_id=tontine["id"],
+            metadata={"user_name": current_user["full_name"], "tontine_name": tontine["name"]}
         )
+    
+    # Send invitation email via Resend
+    try:
+        resend.Emails.send({
+            "from": "TontineClub <onboarding@resend.dev>",
+            "to": [invitation_data.invited_email],
+            "subject": f"Invitation à rejoindre la tontine '{tontine['name']}' - TontineClub",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #2563EB, #3B82F6); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">TontineClub</h1>
+                </div>
+                <div style="background: white; padding: 30px; border: 1px solid #E2E8F0; border-radius: 0 0 12px 12px;">
+                    <h2 style="color: #1E293B; margin-top: 0;">Vous avez été invité(e) !</h2>
+                    <p style="color: #64748B; font-size: 16px; line-height: 1.6;">
+                        <strong>{current_user['full_name']}</strong> vous invite à rejoindre la tontine 
+                        <strong>"{tontine['name']}"</strong> sur TontineClub.
+                    </p>
+                    <div style="background: #F8FAFC; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 5px 0; color: #1E293B;"><strong>Cotisation :</strong> {tontine.get('contribution_amount', 0)} {tontine.get('currency', 'XOF')}</p>
+                        <p style="margin: 5px 0; color: #1E293B;"><strong>Membres :</strong> {tontine.get('current_members', 0)}/{tontine.get('max_members', 0)}</p>
+                        <p style="margin: 5px 0; color: #1E293B;"><strong>Fréquence :</strong> {'Hebdomadaire' if tontine.get('frequency') == 'weekly' else 'Mensuel'}</p>
+                    </div>
+                    <p style="color: #64748B; font-size: 14px;">
+                        {'Connectez-vous à TontineClub pour accepter ou refuser cette invitation.' if invited_user else 'Créez votre compte sur TontineClub pour rejoindre cette tontine.'}
+                    </p>
+                    <div style="text-align: center; margin-top: 25px;">
+                        <a href="https://tontineclub.com" style="background: #2563EB; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            Ouvrir TontineClub
+                        </a>
+                    </div>
+                </div>
+                <p style="color: #94A3B8; font-size: 12px; text-align: center; margin-top: 20px;">
+                    © TontineClub - Gestion d'épargne communautaire
+                </p>
+            </div>
+            """
+        })
+        print(f"Invitation email sent to {invitation_data.invited_email}")
+    except Exception as e:
+        print(f"Failed to send invitation email: {e}")
     
     return invitation
 
@@ -789,7 +833,8 @@ async def accept_invitation(invitation_id: str, current_user: dict = Depends(get
         notif_type=NotificationType.INVITATION_ACCEPTED,
         title="Invitation acceptée",
         message=f"{current_user['full_name']} a accepté votre invitation pour '{tontine['name']}'",
-        tontine_id=tontine["id"]
+        tontine_id=tontine["id"],
+        metadata={"user_name": current_user["full_name"], "tontine_name": tontine["name"]}
     )
     
     return {"message": "Invitation acceptée avec succès"}
@@ -818,7 +863,8 @@ async def reject_invitation(invitation_id: str, current_user: dict = Depends(get
             notif_type=NotificationType.INVITATION_REJECTED,
             title="Invitation refusée",
             message=f"{current_user['full_name']} a refusé votre invitation pour '{tontine['name']}'",
-            tontine_id=tontine["id"]
+            tontine_id=tontine["id"],
+            metadata={"user_name": current_user["full_name"], "tontine_name": tontine["name"]}
         )
     
     return {"message": "Invitation refusée"}
@@ -933,7 +979,8 @@ async def start_tontine(tontine_id: str, current_user: dict = Depends(get_curren
             notif_type=NotificationType.CYCLE_STARTED,
             title="Tontine démarrée",
             message=f"La tontine '{tontine['name']}' a démarré!",
-            tontine_id=tontine_id
+            tontine_id=tontine_id,
+            metadata={"tontine_name": tontine["name"]}
         )
     
     return {"message": "Tontine démarrée avec succès"}
@@ -1391,7 +1438,8 @@ async def activate_trial(current_user: dict = Depends(get_current_user)):
         user_id=user_id,
         notif_type=NotificationType.TRIAL_STARTED,
         title="Essai gratuit activé !",
-        message=f"Votre essai gratuit de {TRIAL_DURATION_DAYS} jours a commencé. Profitez de toutes les fonctionnalités TontineClub Premium."
+        message=f"Votre essai gratuit de {TRIAL_DURATION_DAYS} jours a commencé. Profitez de toutes les fonctionnalités TontineClub Premium.",
+        metadata={"trial_days": TRIAL_DURATION_DAYS}
     )
     
     return {
