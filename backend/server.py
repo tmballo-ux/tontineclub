@@ -28,7 +28,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'tontineclub')]
 
 # JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'REDACTED_JWT_SECRET')
+SECRET_KEY = os.environ['JWT_SECRET']
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24 * 7  # 7 days
 
@@ -63,8 +63,8 @@ async def admin_page():
     return HTMLResponse(content="<h1>Admin not found</h1>", status_code=404)
 
 # Gmail SMTP configuration
-GMAIL_EMAIL = os.environ.get('GMAIL_EMAIL', 'nmamadou222@gmail.com')
-GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', 'REDACTED_GMAIL_APP_PASSWORD')
+GMAIL_EMAIL = os.environ['GMAIL_EMAIL']
+GMAIL_APP_PASSWORD = os.environ['GMAIL_APP_PASSWORD']
 
 def send_email(to_email: str, subject: str, html_content: str):
     """Send email via Gmail SMTP"""

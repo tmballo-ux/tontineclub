@@ -10,20 +10,20 @@ import os
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.environ.get('JWT_SECRET', 'REDACTED_JWT_SECRET_secure')
-ADMIN_SECRET = os.environ.get('ADMIN_JWT_SECRET', 'REDACTED_ADMIN_JWT_SECRET')
+SECRET_KEY = os.environ['JWT_SECRET']
+ADMIN_SECRET = os.environ.get('ADMIN_JWT_SECRET', '')
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
 # Admin credentials
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 't.mballo@gmail.com')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 ADMIN_PASSWORD_HASH = None
 
 
 def get_admin_password_hash():
     global ADMIN_PASSWORD_HASH
     if ADMIN_PASSWORD_HASH is None:
-        admin_pwd = os.environ.get('ADMIN_PASSWORD', 'REDACTED_ADMIN_PASSWORD$$$$')
+        admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
         ADMIN_PASSWORD_HASH = pwd_context.hash(admin_pwd)
     return ADMIN_PASSWORD_HASH
 
