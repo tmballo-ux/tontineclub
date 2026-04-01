@@ -12,7 +12,7 @@ import PaywallView from '@/src/components/PaywallView';
 
 export default function TabsLayout() {
   const { unreadCount } = useTontineStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { hasAccess, isChecked, isLoading, fetchStatus } = useSubscriptionStore();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -20,13 +20,16 @@ export default function TabsLayout() {
 
   const tabBarBottomPadding = Math.max(insets.bottom, 8);
 
+  // Admin users bypass the paywall
+  const isAdmin = user?.role === 'admin';
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchStatus();
     }
   }, [isAuthenticated]);
 
-  if (isAuthenticated && !isChecked) {
+  if (isAuthenticated && !isChecked && !isAdmin) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -35,7 +38,7 @@ export default function TabsLayout() {
     );
   }
 
-  if (isAuthenticated && isChecked && !hasAccess) {
+  if (isAuthenticated && isChecked && !hasAccess && !isAdmin) {
     return (
       <PaywallView
         onTrialActivated={() => {

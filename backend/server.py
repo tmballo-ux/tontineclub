@@ -180,6 +180,7 @@ class UserResponse(BaseModel):
     phone: str
     profile_photo: Optional[str] = None
     preferred_currency: str = "XOF"
+    role: str = "user"
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -387,6 +388,7 @@ async def login(credentials: UserLogin):
             phone=user["phone"],
             profile_photo=user.get("profile_photo"),
             preferred_currency=user.get("preferred_currency", "XOF"),
+            role=user.get("role", "user"),
             created_at=user["created_at"]
         )
     )
@@ -443,6 +445,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         phone=current_user["phone"],
         profile_photo=current_user.get("profile_photo"),
         preferred_currency=current_user.get("preferred_currency", "XOF"),
+        role=current_user.get("role", "user"),
         created_at=current_user["created_at"]
     )
 
@@ -460,6 +463,7 @@ async def update_profile(update_data: UserUpdate, current_user: dict = Depends(g
         phone=updated_user["phone"],
         profile_photo=updated_user.get("profile_photo"),
         preferred_currency=updated_user.get("preferred_currency", "XOF"),
+        role=updated_user.get("role", "user"),
         created_at=updated_user["created_at"]
     )
 
