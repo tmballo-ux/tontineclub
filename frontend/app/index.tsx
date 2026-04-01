@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
@@ -11,6 +11,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
   const { t } = useTranslation();
+  const { height } = useWindowDimensions();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -24,7 +25,11 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { minHeight: height - 80 }]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.logoContainer}>
           <Image
             source={require('@/assets/logo.png')}
@@ -66,7 +71,7 @@ export default function WelcomeScreen() {
             size="lg"
           />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -92,7 +97,7 @@ const FeatureItem: React.FC<{ icon: string; title: string; description: string }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between', paddingVertical: 32 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'space-between', paddingVertical: 32 },
   logoContainer: { alignItems: 'center', marginTop: 40 },
   logoImage: { width: 120, height: 120, borderRadius: 28, marginBottom: 16 },
   appName: { fontSize: 32, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
