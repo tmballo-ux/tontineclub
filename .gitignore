@@ -84,3 +84,4 @@ android-sdk/
 # *.env.*
 !backend/.env
 !frontend/.env
+memory/test_credentials.md
