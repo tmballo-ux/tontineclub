@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 import jwt
 from passlib.context import CryptContext
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
 from enum import Enum
 
 ROOT_DIR = Path(__file__).parent
@@ -41,8 +45,6 @@ app = FastAPI(title="TontineClub API", version="1.0.0")
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 import os as _os
-import resend
-import secrets
 
 if _os.path.exists("/app/backend/playstore_assets"):
     app.mount("/api/assets", StaticFiles(directory="/app/backend/playstore_assets"), name="playstore_assets")
@@ -60,9 +62,22 @@ async def admin_page():
         return HTMLResponse(content=admin_html.read_text())
     return HTMLResponse(content="<h1>Admin not found</h1>", status_code=404)
 
-# Resend configuration for password reset emails
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_LsUVgSXx_K2EqvFgsjT2KD8ZkaAWL87Ft')
-resend.api_key = RESEND_API_KEY
+# Gmail SMTP configuration
+GMAIL_EMAIL = os.environ.get('GMAIL_EMAIL', 'nmamadou222@gmail.com')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', 'REDACTED_GMAIL_APP_PASSWORD')
+
+def send_email(to_email: str, subject: str, html_content: str):
+    """Send email via Gmail SMTP"""
+    msg = MIMEMultipart('alternative')
+    msg['From'] = f'TontineClub <{GMAIL_EMAIL}>'
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+        server.send_message(msg)
+    print(f"Email sent successfully to {to_email}")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -387,13 +402,12 @@ async def forgot_password(data: dict = Body(...)):
         hashed = pwd_context.hash(temp_password)
         await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hashed}})
         
-        # Send email via Resend
+        # Send email via Gmail SMTP
         try:
-            resend.Emails.send({
-                "from": "TontineClub <onboarding@resend.dev>",
-                "to": [email],
-                "subject": "TontineClub — Réinitialisation de votre mot de passe",
-                "html": f"""
+            send_email(
+                to_email=email,
+                subject="TontineClub — Réinitialisation de votre mot de passe",
+                html_content=f"""
                 <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #F8FAFC; border-radius: 16px;">
                     <div style="text-align: center; margin-bottom: 24px;">
                         <h1 style="color: #1E40AF; font-size: 24px; margin: 0;">🏦 TontineClub</h1>
@@ -411,7 +425,7 @@ async def forgot_password(data: dict = Body(...)):
                     <p style="text-align: center; color: #94A3B8; font-size: 12px; margin-top: 16px;">© 2026 TontineClub — Gestion de tontines sécurisée</p>
                 </div>
                 """
-            })
+            )
             logger.info(f"Password reset email sent to {email}")
         except Exception as e:
             logger.error(f"Failed to send reset email: {e}")
@@ -682,13 +696,13 @@ async def send_invitation(invitation_data: InvitationCreate, current_user: dict 
             metadata={"user_name": current_user["full_name"], "tontine_name": tontine["name"]}
         )
     
-    # Send invitation email via Resend
+    # Send invitation email via Gmail SMTP
+    email_sent = False
     try:
-        resend.Emails.send({
-            "from": "TontineClub <onboarding@resend.dev>",
-            "to": [invitation_data.invited_email],
-            "subject": f"Invitation à rejoindre la tontine '{tontine['name']}' - TontineClub",
-            "html": f"""
+        send_email(
+            to_email=invitation_data.invited_email,
+            subject=f"Invitation à rejoindre la tontine '{tontine['name']}' - TontineClub",
+            html_content=f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #2563EB, #3B82F6); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 24px;">TontineClub</h1>
@@ -707,24 +721,19 @@ async def send_invitation(invitation_data: InvitationCreate, current_user: dict 
                     <p style="color: #64748B; font-size: 14px;">
                         {'Connectez-vous à TontineClub pour accepter ou refuser cette invitation.' if invited_user else 'Créez votre compte sur TontineClub pour rejoindre cette tontine.'}
                     </p>
-                    <div style="text-align: center; margin-top: 25px;">
-                        <a href="https://tontineclub.com" style="background: #2563EB; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                            Ouvrir TontineClub
-                        </a>
-                    </div>
                 </div>
                 <p style="color: #94A3B8; font-size: 12px; text-align: center; margin-top: 20px;">
                     © TontineClub - Gestion d'épargne communautaire
                 </p>
             </div>
             """
-        })
-        print(f"Invitation email sent to {invitation_data.invited_email}")
+        )
+        email_sent = True
     except Exception as e:
         print(f"Failed to send invitation email: {e}")
     
     response = invitation.dict()
-    response["email_sent"] = True
+    response["email_sent"] = email_sent
     return response
 
 @api_router.get("/invitations/received", response_model=List[Invitation])
