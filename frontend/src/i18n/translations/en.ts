@@ -140,6 +140,9 @@ export const en: TranslationKeys = {
     emptyCompleted: 'No completed tontines',
     emptyCompletedText: 'Your completed tontines will appear here.',
     createTontine: 'Create a tontine',
+    statusDraft: 'Draft',
+    statusActive: 'Active',
+    statusCompleted: 'Completed',
   },
   invitations: {
     title: 'Invitations',

@@ -149,6 +149,9 @@ export const fr = {
     emptyCompleted: 'Aucune tontine terminée',
     emptyCompletedText: 'Vos tontines terminées apparaîtront ici.',
     createTontine: 'Créer une tontine',
+    statusDraft: 'Brouillon',
+    statusActive: 'Actif',
+    statusCompleted: 'Terminée',
   },
 
   // Invitations

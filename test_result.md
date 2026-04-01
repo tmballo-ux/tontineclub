@@ -613,7 +613,7 @@ agent_communication:
       - Health check
       
       Test credentials: test@tontineclub.com / Test123!
-      Backend URL: https://qa-checkpoint-7.preview.emergentagent.com
+      Backend URL: https://tontine-prod-ready.preview.emergentagent.com
   - agent: "main"
     message: |
       TontineClub MVP implementation complete. 
