@@ -162,7 +162,7 @@ interface TontineState {
   
   fetchInvitations: () => Promise<void>;
   fetchEnrichedInvitations: () => Promise<void>;
-  sendInvitation: (tontineId: string, email: string) => Promise<void>;
+  sendInvitation: (tontineId: string, email: string) => Promise<any>;
   acceptInvitation: (id: string) => Promise<void>;
   rejectInvitation: (id: string) => Promise<void>;
   
@@ -328,12 +328,13 @@ export const useTontineStore = create<TontineState>((set, get) => ({
 
   sendInvitation: async (tontineId: string, email: string) => {
     try {
-      await axios.post(`${API_URL}/api/invitations`, {
+      const response = await axios.post(`${API_URL}/api/invitations`, {
         tontine_id: tontineId,
         invited_email: email,
       }, {
         headers: getAuthHeader(),
       });
+      return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.detail || "Erreur d'envoi d'invitation");
     }

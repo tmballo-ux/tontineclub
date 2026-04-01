@@ -419,6 +419,7 @@ export const es: TranslationKeys = {
     contest: 'Contestar',
     reason: 'Razón',
     invitationSent: '¡Invitación enviada!',
+    emailNotSent: 'No se pudo enviar el email. Necesitas verificar un dominio en resend.com/domains para enviar emails a otras personas.',
     tontineStarted: '¡Tontina iniciada!',
     paymentDeclared: '¡Pago declarado!',
     paymentConfirmed: '¡Pago confirmado!',

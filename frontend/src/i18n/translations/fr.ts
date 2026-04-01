@@ -445,6 +445,7 @@ export const fr = {
     contest: 'Contester',
     reason: 'Raison',
     invitationSent: 'Invitation envoyée !',
+    emailNotSent: "L'email n'a pas pu être envoyé. Vous devez vérifier un domaine sur resend.com/domains pour envoyer des emails à d'autres personnes.",
     tontineStarted: 'Tontine démarrée !',
     paymentDeclared: 'Paiement annoncé !',
     paymentConfirmed: 'Paiement confirmé !',

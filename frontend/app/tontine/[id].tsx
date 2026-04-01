@@ -97,8 +97,15 @@ export default function TontineDetailScreen() {
     }
     setInviteLoading(true);
     try {
-      await sendInvitation(id!, inviteEmail.trim());
-      Alert.alert(t('common.success'), t('detail.invitationSent'));
+      const result = await sendInvitation(id!, inviteEmail.trim());
+      if (result && !result.email_sent) {
+        Alert.alert(
+          t('common.success'),
+          t('detail.invitationSent') + '\n\n⚠️ ' + t('detail.emailNotSent')
+        );
+      } else {
+        Alert.alert(t('common.success'), t('detail.invitationSent'));
+      }
       setShowInviteModal(false);
       setInviteEmail('');
     } catch (error: any) {

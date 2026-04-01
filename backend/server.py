@@ -629,7 +629,7 @@ async def delete_tontine(tontine_id: str, current_user: dict = Depends(get_curre
 
 # ===================== INVITATION ENDPOINTS =====================
 
-@api_router.post("/invitations", response_model=Invitation)
+@api_router.post("/invitations")
 async def send_invitation(invitation_data: InvitationCreate, current_user: dict = Depends(get_current_user)):
     tontine = await db.tontines.find_one({"id": invitation_data.tontine_id})
     if not tontine:
@@ -723,7 +723,9 @@ async def send_invitation(invitation_data: InvitationCreate, current_user: dict 
     except Exception as e:
         print(f"Failed to send invitation email: {e}")
     
-    return invitation
+    response = invitation.dict()
+    response["email_sent"] = True
+    return response
 
 @api_router.get("/invitations/received", response_model=List[Invitation])
 async def get_received_invitations(current_user: dict = Depends(get_current_user)):
