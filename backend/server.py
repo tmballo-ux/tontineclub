@@ -339,6 +339,10 @@ async def create_notification(user_id: str, notif_type: NotificationType, title:
     await db.notifications.insert_one(notification.dict())
     return notification
 
+# Subscription constants (used in register + subscription endpoints)
+TRIAL_DURATION_DAYS = 7
+SUBSCRIPTION_PRICE_USD = 3.00
+
 # ===================== AUTH ENDPOINTS =====================
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -359,6 +363,35 @@ async def register(user_data: UserCreate):
     user_dict["password_hash"] = get_password_hash(user_data.password)
     
     await db.users.insert_one(user_dict)
+    logger.info(f"New user registered: {user_data.email}")
+    
+    # Auto-activate 7-day free trial for new users
+    try:
+        now = datetime.utcnow()
+        trial_end = now + timedelta(days=TRIAL_DURATION_DAYS)
+        sub_doc = {
+            "id": str(uuid.uuid4()),
+            "user_id": user.id,
+            "status": SubscriptionStatus.TRIALING,
+            "plan": "tontine_premium_monthly",
+            "trial_start": now,
+            "trial_end": trial_end,
+            "trial_used": True,
+            "created_at": now,
+        }
+        await db.subscriptions.insert_one(sub_doc)
+        logger.info(f"Auto-trial activated for new user: {user_data.email}")
+        
+        # Welcome notification
+        await create_notification(
+            user_id=user.id,
+            notif_type=NotificationType.TRIAL_STARTED,
+            title="Bienvenue sur TontineClub !",
+            message="Votre essai gratuit de 7 jours est activé.",
+            metadata={"type": "trial_started", "days": TRIAL_DURATION_DAYS}
+        )
+    except Exception as e:
+        logger.error(f"Error creating trial for {user_data.email}: {e}")
     
     # Create token
     access_token = create_access_token({"sub": user.id})
@@ -1356,9 +1389,6 @@ async def get_tontine_history(tontine_id: str, current_user: dict = Depends(get_
 
 # ===================== SUBSCRIPTION ENDPOINTS =====================
 
-TRIAL_DURATION_DAYS = 7
-SUBSCRIPTION_PRICE_USD = 3.00
-
 @api_router.get("/subscription/status")
 async def get_subscription_status(current_user: dict = Depends(get_current_user)):
     """Check user's current subscription status."""
@@ -1773,6 +1803,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_db_client():
+    """Ensure admin user and indexes exist on startup"""
+    try:
+        # Create indexes
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("id", unique=True)
+        await db.tontines.create_index("id")
+        await db.notifications.create_index("user_id")
+        await db.invitations.create_index("id")
+        logger.info("Database indexes created/verified")
+        
+        # Ensure admin user exists
+        admin_email = os.environ.get('ADMIN_EMAIL', '')
+        admin_password = os.environ.get('ADMIN_PASSWORD', '')
+        
+        if admin_email and admin_password:
+            existing_admin = await db.users.find_one({"email": admin_email})
+            if not existing_admin:
+                admin_user = {
+                    "id": str(uuid.uuid4()),
+                    "email": admin_email,
+                    "full_name": "Thierno Mballo",
+                    "phone": "+1000000000",
+                    "password_hash": get_password_hash(admin_password),
+                    "preferred_currency": "XOF",
+                    "role": "admin",
+                    "created_at": datetime.utcnow()
+                }
+                await db.users.insert_one(admin_user)
+                logger.info(f"Admin user created: {admin_email}")
+            else:
+                # Ensure admin has role=admin
+                if existing_admin.get("role") != "admin":
+                    await db.users.update_one(
+                        {"email": admin_email},
+                        {"$set": {"role": "admin"}}
+                    )
+                    logger.info(f"Admin role updated for: {admin_email}")
+                logger.info(f"Admin user already exists: {admin_email}")
+        
+        # Test DB connection
+        await db.command("ping")
+        logger.info(f"MongoDB connected successfully to: {mongo_url[:30]}...")
+        
+    except Exception as e:
+        logger.error(f"Startup error: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

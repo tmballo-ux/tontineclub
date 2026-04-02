@@ -36,6 +36,8 @@ interface User {
   full_name: string;
   phone: string;
   profile_photo?: string;
+  preferred_currency?: string;
+  role?: string;
   created_at: string;
 }
 
