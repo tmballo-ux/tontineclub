@@ -49,17 +49,20 @@ import os as _os
 if _os.path.exists("/app/backend/playstore_assets"):
     app.mount("/api/assets", StaticFiles(directory="/app/backend/playstore_assets"), name="playstore_assets")
 
-# Admin static files
+# Admin static files - served under /api prefix so Kubernetes routes to backend
 if _os.path.exists("/app/backend/admin_static"):
-    app.mount("/admin/static", StaticFiles(directory="/app/backend/admin_static"), name="admin_static")
+    app.mount("/api/admin-static", StaticFiles(directory="/app/backend/admin_static"), name="admin_static")
 
-# Admin page route (served OUTSIDE /api prefix)
-@app.get("/admin", response_class=HTMLResponse)
-@app.get("/admin/", response_class=HTMLResponse)
+# Admin page route (under /api so it reaches the backend through ingress)
+@app.get("/api/admin-panel", response_class=HTMLResponse)
+@app.get("/api/admin-panel/", response_class=HTMLResponse)
 async def admin_page():
     admin_html = Path("/app/backend/admin_static/index.html")
     if admin_html.exists():
-        return HTMLResponse(content=admin_html.read_text())
+        content = admin_html.read_text()
+        # Fix static file paths to use /api/admin-static
+        content = content.replace('/admin/static/', '/api/admin-static/')
+        return HTMLResponse(content=content)
     return HTMLResponse(content="<h1>Admin not found</h1>", status_code=404)
 
 # Gmail SMTP configuration
