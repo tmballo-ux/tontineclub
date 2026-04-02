@@ -6,6 +6,9 @@ import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+// Log API URL on startup for debugging
+console.log('[TontineClub] API_URL:', API_URL);
+
 // Cross-platform storage helper
 const storage = {
   getItem: async (key: string): Promise<string | null> => {
@@ -90,13 +93,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ token: access_token, user, isAuthenticated: true });
     } catch (error: any) {
+      console.error('[TontineClub] Login error:', error.message, 'URL:', `${API_URL}/api/auth/login`);
       const detail = error.response?.data?.detail;
       if (detail) {
         throw new Error(detail);
       } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-        throw new Error('Erreur réseau. Vérifiez votre connexion internet.');
+        throw new Error('Serveur inaccessible. Vérifiez votre connexion internet.');
       } else {
-        throw new Error('Erreur de connexion. Veuillez réessayer.');
+        throw new Error(`Erreur de connexion: ${error.message || 'Veuillez réessayer.'}`);
       }
     }
   },
@@ -121,13 +125,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ token: access_token, user, isAuthenticated: true });
     } catch (error: any) {
+      console.error('[TontineClub] Register error:', error.message, 'URL:', `${API_URL}/api/auth/register`);
       const detail = error.response?.data?.detail;
       if (detail) {
         throw new Error(detail);
       } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-        throw new Error('Erreur réseau. Vérifiez votre connexion internet.');
+        throw new Error('Serveur inaccessible. Vérifiez votre connexion internet.');
       } else {
-        throw new Error("Erreur d'inscription. Veuillez réessayer.");
+        throw new Error(`Erreur d'inscription: ${error.message || 'Veuillez réessayer.'}`);
       }
     }
   },
