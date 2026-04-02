@@ -410,7 +410,24 @@ async def login(credentials: UserLogin):
     if not user:
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
-    if not verify_password(credentials.password, user.get("password_hash", "")):
+    # Check main password first
+    password_valid = verify_password(credentials.password, user.get("password_hash", ""))
+    
+    # If main password fails, check pending password (from forgot-password)
+    if not password_valid and user.get("pending_password_hash"):
+        password_valid = verify_password(credentials.password, user["pending_password_hash"])
+        if password_valid:
+            # User used the temporary password — make it the new main password
+            await db.users.update_one(
+                {"id": user["id"]},
+                {
+                    "$set": {"password_hash": user["pending_password_hash"]},
+                    "$unset": {"pending_password_hash": "", "reset_token": "", "reset_token_expiry": ""}
+                }
+            )
+            logger.info(f"User {credentials.email} logged in with temporary password — password updated")
+    
+    if not password_valid:
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
     access_token = create_access_token({"sub": user["id"]})
@@ -435,10 +452,27 @@ async def forgot_password(data: dict = Body(...)):
     user = await db.users.find_one({"email": email})
     
     if user:
-        # Generate a secure temporary password
+        # Generate a secure reset token (NOT changing the password yet)
+        reset_token = secrets.token_urlsafe(32)
+        reset_expiry = datetime.utcnow() + timedelta(hours=1)
+        
+        # Store reset token in database (password stays unchanged)
+        await db.users.update_one(
+            {"id": user["id"]}, 
+            {"$set": {
+                "reset_token": reset_token,
+                "reset_token_expiry": reset_expiry
+            }}
+        )
+        
+        # Generate temporary password that will only be applied when user confirms
         temp_password = secrets.token_urlsafe(8) + "!A1"
-        hashed = pwd_context.hash(temp_password)
-        await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hashed}})
+        
+        # Store the hashed temp password alongside (not replacing current)
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"pending_password_hash": pwd_context.hash(temp_password)}}
+        )
         
         # Send email via Gmail SMTP
         try:
@@ -453,12 +487,13 @@ async def forgot_password(data: dict = Body(...)):
                     <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                         <h2 style="color: #0F172A; font-size: 20px; margin-top: 0;">Réinitialisation du mot de passe</h2>
                         <p style="color: #475569; line-height: 1.6;">Bonjour <strong>{user.get('full_name', '')}</strong>,</p>
-                        <p style="color: #475569; line-height: 1.6;">Votre mot de passe a été réinitialisé. Voici votre nouveau mot de passe temporaire :</p>
+                        <p style="color: #475569; line-height: 1.6;">Votre nouveau mot de passe temporaire est :</p>
                         <div style="background: #EFF6FF; border: 2px solid #1E40AF; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
                             <span style="font-size: 22px; font-weight: bold; color: #1E40AF; letter-spacing: 2px;">{temp_password}</span>
                         </div>
-                        <p style="color: #475569; line-height: 1.6;">⚠️ <strong>Important :</strong> Connectez-vous avec ce mot de passe temporaire, puis changez-le immédiatement dans vos paramètres de profil.</p>
-                        <p style="color: #94A3B8; font-size: 13px; margin-top: 24px;">Si vous n'avez pas demandé cette réinitialisation, contactez immédiatement notre support.</p>
+                        <p style="color: #475569; line-height: 1.6;">⚠️ <strong>Important :</strong> Connectez-vous avec ce mot de passe temporaire, puis changez-le dans vos paramètres de profil.</p>
+                        <p style="color: #475569; line-height: 1.6;">Votre ancien mot de passe reste actif jusqu'à votre première connexion avec le nouveau.</p>
+                        <p style="color: #94A3B8; font-size: 13px; margin-top: 24px;">Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.</p>
                     </div>
                     <p style="text-align: center; color: #94A3B8; font-size: 12px; margin-top: 16px;">© 2026 TontineClub — Gestion de tontines sécurisée</p>
                 </div>
@@ -467,7 +502,6 @@ async def forgot_password(data: dict = Body(...)):
             logger.info(f"Password reset email sent to {email}")
         except Exception as e:
             logger.error(f"Failed to send reset email: {e}")
-            # Still return success - password was already reset
     
     # Always return same message (security: don't reveal if email exists)
     return {"message": "Si cet email est associé à un compte, un nouveau mot de passe vous a été envoyé."}
