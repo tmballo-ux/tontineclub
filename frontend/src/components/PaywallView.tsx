@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,12 +21,20 @@ interface PaywallProps {
 }
 
 export default function PaywallView({ onTrialActivated }: PaywallProps) {
-  const { activateTrial } = useSubscriptionStore();
+  const { activateTrial, hasAccess, status, fetchStatus } = useSubscriptionStore();
   const { logout } = useAuthStore();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Auto-redirect if subscription is already active (e.g. auto-trial from registration)
+  useEffect(() => {
+    if (hasAccess || status === 'trialing' || status === 'active') {
+      console.log('[TontineClub] PaywallView: subscription already active, redirecting...');
+      onTrialActivated();
+    }
+  }, [hasAccess, status]);
 
   const FEATURES = [
     { icon: 'wallet', title: t('paywall.feat1Title'), desc: t('paywall.feat1Desc') },
@@ -43,11 +51,25 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
     try {
       const msg = await activateTrial();
       setSuccessMsg(msg);
+      // Short delay then redirect — activateTrial handles "already active" case too
       setTimeout(() => {
         onTrialActivated();
-      }, 1200);
+      }, 800);
     } catch (e: any) {
-      setErrorMsg(e.response?.data?.detail || t('paywall.activationError'));
+      // Even on error, fetch status — maybe the trial was activated but API returned error
+      try {
+        await fetchStatus();
+      } catch (_) {}
+      // Check if we now have access after fetching
+      const currentState = useSubscriptionStore.getState();
+      if (currentState.hasAccess) {
+        setSuccessMsg(t('paywall.trialAlreadyActive') || 'Votre essai gratuit est actif !');
+        setTimeout(() => {
+          onTrialActivated();
+        }, 800);
+        return;
+      }
+      setErrorMsg(e.response?.data?.detail || e.message || t('paywall.activationError'));
     } finally {
       setLoading(false);
     }

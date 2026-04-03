@@ -102,32 +102,11 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      // Clear auth store
+      // logout() handles: clearing storage, resetting subscription store, resetting auth state
+      // Root layout's auth guard will handle redirect to welcome screen
       await logout();
-      // Clear subscription state from zustand store
-      useSubscriptionStore.setState({
-        status: 'none',
-        hasAccess: false,
-        trialEnd: null,
-        subscriptionEnd: null,
-        plan: null,
-        isLoading: true,
-        isChecked: false,
-      });
-      // Clear any additional stored data
-      if (Platform.OS === 'web') {
-        await AsyncStorage.multiRemove(['token', 'user', 'subscription']);
-      } else {
-        await SecureStore.deleteItemAsync('token').catch(() => {});
-        await SecureStore.deleteItemAsync('user').catch(() => {});
-        await AsyncStorage.multiRemove(['token', 'user', 'subscription']).catch(() => {});
-      }
-      // Navigate to login and reset the navigation stack
-      router.replace('/(auth)/login');
     } catch (error) {
       console.error('Logout error:', error);
-      // Force navigate even on error
-      router.replace('/(auth)/login');
     }
   };
 

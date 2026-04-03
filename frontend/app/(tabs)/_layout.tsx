@@ -29,6 +29,11 @@ export default function TabsLayout() {
     }
   }, [isAuthenticated]);
 
+  // If not authenticated, render nothing - root layout will redirect
+  if (!isAuthenticated) {
+    return null;
+  }
+
   if (isAuthenticated && !isChecked && !isAdmin) {
     return (
       <View style={styles.loadingContainer}>

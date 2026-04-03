@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Platform } from 'react-native';
+import { useSubscriptionStore } from './subscriptionStore';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -138,9 +139,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await storage.deleteItem('token');
-    await storage.deleteItem('user');
-    set({ token: null, user: null, isAuthenticated: false });
+    try {
+      // Clear all stored data
+      await storage.deleteItem('token');
+      await storage.deleteItem('user');
+    } catch (e) {
+      console.error('[TontineClub] Error clearing storage on logout:', e);
+    }
+    // Reset subscription store to prevent stale data
+    try {
+      useSubscriptionStore.getState().reset();
+    } catch (e) {
+      console.error('[TontineClub] Error resetting subscription store:', e);
+    }
+    // Reset auth state - this triggers UI re-renders
+    set({ token: null, user: null, isAuthenticated: false, isLoading: false });
   },
 
   updateProfile: async (data) => {

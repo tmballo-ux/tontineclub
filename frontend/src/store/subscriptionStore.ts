@@ -19,6 +19,7 @@ export interface SubscriptionState {
   fetchStatus: () => Promise<void>;
   activateTrial: () => Promise<string>;
   cancelSubscription: () => Promise<string>;
+  reset: () => void;
 }
 
 const getAuthHeader = async () => {
@@ -91,5 +92,17 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     const res = await axios.post(`${API_URL}/api/subscription/cancel`, {}, { headers });
     set({ status: 'canceled' });
     return res.data.message;
+  },
+
+  reset: () => {
+    set({
+      status: 'none',
+      hasAccess: false,
+      trialEnd: null,
+      subscriptionEnd: null,
+      plan: null,
+      isLoading: false,
+      isChecked: false,
+    });
   },
 }));

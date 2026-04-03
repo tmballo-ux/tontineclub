@@ -116,7 +116,7 @@ Avant de passer de "test interne" à "production", Google Play exige :
 
 Le build est configuré avec l'URL backend :
 ```
-EXPO_PUBLIC_BACKEND_URL=https://tontine-prod-ready.preview.emergentagent.com
+EXPO_PUBLIC_BACKEND_URL=https://club-auth-test.preview.emergentagent.com
 ```
 
 > ⚠️ Pour la production finale, vous devrez déployer votre backend sur un hébergement permanent (Railway, Render, VPS, etc.) et mettre à jour cette URL dans `eas.json` → `build.production.env`.
