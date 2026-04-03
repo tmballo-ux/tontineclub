@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 interface PaywallProps {
   onTrialActivated: () => void;
@@ -75,8 +77,18 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
     }
   };
 
+  const router = useRouter();
+
   const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      try { localStorage.clear(); } catch (e) {}
+      window.location.href = '/';
+      return;
+    }
     await logout();
+    setTimeout(() => {
+      router.replace('/');
+    }, 50);
   };
 
   return (

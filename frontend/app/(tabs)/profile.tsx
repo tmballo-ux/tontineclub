@@ -101,13 +101,26 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // On web, clear storage directly and force full page reload
+      // This avoids the Zustand + Expo Router render loop issue
+      try {
+        localStorage.clear();
+      } catch (e) {
+        console.error('Error clearing localStorage:', e);
+      }
+      window.location.href = '/';
+      return;
+    }
+    // On mobile, use normal logout then navigate
     try {
-      // logout() handles: clearing storage, resetting subscription store, resetting auth state
-      // Root layout's auth guard will handle redirect to welcome screen
       await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
+    setTimeout(() => {
+      router.replace('/');
+    }, 50);
   };
 
   const handleDeleteCheck = async () => {
