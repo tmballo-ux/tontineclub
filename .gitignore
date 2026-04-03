@@ -28,10 +28,8 @@ next-env.d.ts
 # Production builds
 /build
 dist/
-dist
 
-# Environment files (comprehensive coverage)
-
+# Credentials
 *token.json*
 *credentials.json*
 
@@ -75,16 +73,10 @@ agenthub/agents/youtube/db
 
 # Build caches
 .cache/
+.metro-cache/
 
 # Mobile development
 android-sdk/
-
-# Environment files - allow backend and frontend .env for deployment
-# *.env
-# *.env.*
-!backend/.env
-!frontend/.env
-memory/test_credentials.md
 
 # Test files
 additional_tests.py
@@ -94,20 +86,4 @@ detailed_test.py
 generate_assets.py
 test_existing_credentials.py
 test_result.md
-.metro-cache/
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+memory/test_credentials.md
