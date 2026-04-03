@@ -29,12 +29,17 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [trialExpired, setTrialExpired] = useState(false);
 
-  // Auto-redirect if subscription is already active (e.g. auto-trial from registration)
+  // Auto-redirect ONLY if subscription is TRULY active (not from stale state)
   useEffect(() => {
-    if (hasAccess || status === 'trialing' || status === 'active') {
-      console.log('[TontineClub] PaywallView: subscription already active, redirecting...');
+    if (hasAccess && (status === 'trialing' || status === 'active')) {
+      console.log('[TontineClub] PaywallView: subscription active, dismissing paywall');
       onTrialActivated();
+    }
+    // If status is expired, show appropriate UI
+    if (status === 'expired') {
+      setTrialExpired(true);
     }
   }, [hasAccess, status]);
 
@@ -53,16 +58,13 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
     try {
       const msg = await activateTrial();
       setSuccessMsg(msg);
-      // Short delay then redirect — activateTrial handles "already active" case too
+      // activateTrial succeeded — subscription is now active
       setTimeout(() => {
         onTrialActivated();
       }, 800);
     } catch (e: any) {
-      // Even on error, fetch status — maybe the trial was activated but API returned error
-      try {
-        await fetchStatus();
-      } catch (_) {}
-      // Check if we now have access after fetching
+      // activateTrial already called fetchStatus() internally on error
+      // Check the REAL state from the store
       const currentState = useSubscriptionStore.getState();
       if (currentState.hasAccess) {
         setSuccessMsg(t('paywall.trialAlreadyActive') || 'Votre essai gratuit est actif !');
@@ -71,7 +73,14 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
         }, 800);
         return;
       }
-      setErrorMsg(e.response?.data?.detail || e.message || t('paywall.activationError'));
+      // Trial is truly unavailable (expired, already used, etc.)
+      const detail = e.response?.data?.detail || e.message || '';
+      if (detail.includes('déjà utilisé') || detail.includes('already used')) {
+        setErrorMsg("Votre essai gratuit a expiré. Veuillez souscrire un abonnement.");
+        setTrialExpired(true);
+      } else {
+        setErrorMsg(detail || t('paywall.activationError'));
+      }
     } finally {
       setLoading(false);
     }

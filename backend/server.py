@@ -367,8 +367,22 @@ async def get_subscription_data(user_id: str) -> dict:
         else:
             has_access = False
             current_status = "expired"
+            # CRITICAL: Also update the DB so activate-trial doesn't get confused
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": SubscriptionStatus.EXPIRED}}
+            )
     elif current_status == "active":
-        has_access = True
+        sub_end = sub.get("subscription_end")
+        if sub_end and datetime.utcnow() > sub_end:
+            has_access = False
+            current_status = "expired"
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": SubscriptionStatus.EXPIRED}}
+            )
+        else:
+            has_access = True
     
     return {
         "status": current_status,

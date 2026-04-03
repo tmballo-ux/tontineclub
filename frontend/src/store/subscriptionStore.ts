@@ -101,22 +101,34 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       await persistSubscription(newState);
       return res.data.message;
     } catch (error: any) {
-      // If trial already active (auto-trial from registration), treat as success
-      if (error.response?.status === 400 && error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        if (detail.includes('déjà') || detail.includes('already')) {
-          const newState = {
-            status: 'trialing' as SubStatus,
-            hasAccess: true,
-            trialEnd: get().trialEnd,
-            subscriptionEnd: null,
-            plan: 'tontine_premium_monthly',
-          };
-          set({ ...newState, isChecked: true, isLoading: false });
-          await persistSubscription(newState);
+      // On ANY error, fetch the REAL status from the server
+      // Do NOT blindly set hasAccess=true — the trial might be expired
+      console.log('[TontineClub] activateTrial error, fetching real status...');
+      try {
+        const statusHeaders = await getAuthHeader();
+        const statusRes = await axios.get(`${API_URL}/api/subscription/status`, {
+          headers: statusHeaders,
+          timeout: 10000,
+        });
+        const data = statusRes.data;
+        const realState = {
+          status: data.status as SubStatus,
+          hasAccess: data.has_access === true,
+          trialEnd: data.trial_end,
+          subscriptionEnd: data.subscription_end,
+          plan: data.plan,
+        };
+        set({ ...realState, isLoading: false, isChecked: true });
+        await persistSubscription(realState);
+        
+        if (realState.hasAccess) {
           return "Votre essai gratuit est déjà actif !";
         }
+      } catch (fetchErr) {
+        console.error('[TontineClub] Failed to fetch real status after trial error:', fetchErr);
       }
+      
+      // If we get here, the trial activation truly failed
       console.error('[TontineClub] Trial error:', error.response?.data || error.message);
       throw error;
     }
