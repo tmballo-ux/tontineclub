@@ -63,14 +63,27 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   activateTrial: async () => {
     const headers = await getAuthHeader();
-    const res = await axios.post(`${API_URL}/api/subscription/activate-trial`, {}, { headers });
-    set({
-      status: 'trialing',
-      hasAccess: true,
-      trialEnd: res.data.trial_end,
-      plan: 'tontine_premium_monthly',
-    });
-    return res.data.message;
+    try {
+      const res = await axios.post(`${API_URL}/api/subscription/activate-trial`, {}, { headers });
+      set({
+        status: 'trialing',
+        hasAccess: true,
+        trialEnd: res.data.trial_end,
+        plan: 'tontine_premium_monthly',
+      });
+      return res.data.message;
+    } catch (error: any) {
+      // If trial already active (auto-trial from registration), treat as success
+      if (error.response?.status === 400 && error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (detail.includes('déjà') || detail.includes('already')) {
+          await get().fetchStatus();
+          return "Votre essai gratuit est déjà actif !";
+        }
+      }
+      console.error('[TontineClub] Trial error:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   cancelSubscription: async () => {
