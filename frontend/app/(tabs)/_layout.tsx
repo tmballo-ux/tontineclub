@@ -29,113 +29,124 @@ export default function TabsLayout() {
     }
   }, [isAuthenticated]);
 
-  if (isAuthenticated && !isChecked && !isAdmin) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>{t('profile.checkingSubscription')}</Text>
-      </View>
-    );
-  }
+  // Determine if we need to show overlays
+  const showLoading = isAuthenticated && !isChecked && !isAdmin;
+  const showPaywall = isAuthenticated && isChecked && !hasAccess && !isAdmin;
 
-  if (isAuthenticated && isChecked && !hasAccess && !isAdmin) {
-    return (
-      <PaywallView
-        onTrialActivated={() => {
-          fetchStatus();
-        }}
-      />
-    );
-  }
-
+  // ALWAYS render Tabs to keep the navigator mounted and avoid "stale" errors.
+  // PaywallView and loading spinner are shown as overlays on top.
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: themeColors.surface,
-          borderTopColor: themeColors.border,
-          paddingBottom: tabBarBottomPadding,
-          paddingTop: 8,
-          height: 60 + tabBarBottomPadding,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('tabs.home'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarStyle: {
+            backgroundColor: themeColors.surface,
+            borderTopColor: themeColors.border,
+            paddingBottom: tabBarBottomPadding,
+            paddingTop: 8,
+            height: 60 + tabBarBottomPadding,
+            // Hide tab bar when paywall or loading is showing
+            ...(showLoading || showPaywall ? { display: 'none' } : {}),
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          },
         }}
-      />
-      <Tabs.Screen
-        name="tontines"
-        options={{
-          title: t('tabs.tontines'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="invitations"
-        options={{
-          title: t('tabs.invitations'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mail" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: t('tabs.notifications'),
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Ionicons name="notifications" size={size} color={color} />
-              {unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: t('tabs.profile'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: t('tabs.home'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="tontines"
+          options={{
+            title: t('tabs.tontines'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="wallet" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="invitations"
+          options={{
+            title: t('tabs.invitations'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="mail" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: t('tabs.notifications'),
+            tabBarIcon: ({ color, size }) => (
+              <View>
+                <Ionicons name="notifications" size={size} color={color} />
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: t('tabs.profile'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+
+      {/* Loading overlay - shown while checking subscription */}
+      {showLoading && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>{t('profile.checkingSubscription')}</Text>
+        </View>
+      )}
+
+      {/* Paywall overlay - shown when user has no active subscription */}
+      {showPaywall && (
+        <View style={styles.overlay}>
+          <PaywallView
+            onTrialActivated={() => {
+              fetchStatus();
+            }}
+          />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    gap: 12,
+    zIndex: 100,
   },
   loadingText: {
     fontSize: 14,
     color: colors.textSecondary,
+    marginTop: 12,
   },
   badge: {
     position: 'absolute',
