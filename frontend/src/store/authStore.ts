@@ -34,6 +34,30 @@ const storage = {
   },
 };
 
+// Helper: fetch subscription status using a token directly (avoids SecureStore race)
+async function fetchSubscriptionWithToken(token: string) {
+  try {
+    const res = await axios.get(`${API_URL}/api/subscription/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = res.data;
+    useSubscriptionStore.setState({
+      status: data.status,
+      hasAccess: data.has_access,
+      trialEnd: data.trial_end,
+      subscriptionEnd: data.subscription_end,
+      plan: data.plan,
+      isLoading: false,
+      isChecked: true,
+    });
+    console.log('[TontineClub] Subscription loaded:', data.status, 'hasAccess:', data.has_access);
+  } catch (e: any) {
+    console.error('[TontineClub] Error fetching subscription:', e.message);
+    // Mark as checked even on error so PaywallView can handle it
+    useSubscriptionStore.setState({ isLoading: false, isChecked: true });
+  }
+}
+
 interface User {
   id: string;
   email: string;
@@ -70,6 +94,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (token && userStr) {
         const user = JSON.parse(userStr);
+        // Fetch subscription BEFORE setting isAuthenticated
+        // This prevents the PaywallView from flashing
+        await fetchSubscriptionWithToken(token);
         set({ token, user, isAuthenticated: true, isLoading: false });
       } else {
         set({ isLoading: false });
@@ -92,7 +119,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
       
-      set({ token: access_token, user, isAuthenticated: true });
+      // Fetch subscription BEFORE setting isAuthenticated
+      // Uses the token directly (no SecureStore read needed)
+      await fetchSubscriptionWithToken(access_token);
+      
+      set({ token: access_token, user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       console.error('[TontineClub] Login error:', error.message, 'URL:', `${API_URL}/api/auth/login`);
       const detail = error.response?.data?.detail;
@@ -124,7 +155,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
       
-      set({ token: access_token, user, isAuthenticated: true });
+      // Fetch subscription BEFORE setting isAuthenticated
+      // Registration auto-activates trial, so this should return hasAccess: true
+      await fetchSubscriptionWithToken(access_token);
+      
+      set({ token: access_token, user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       console.error('[TontineClub] Register error:', error.message, 'URL:', `${API_URL}/api/auth/register`);
       const detail = error.response?.data?.detail;
