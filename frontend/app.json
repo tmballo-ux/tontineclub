@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.tontineclub.app",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#2563EB"
