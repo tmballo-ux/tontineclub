@@ -7,7 +7,6 @@ import { useSubscriptionStore } from './subscriptionStore';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Log API URL on startup for debugging
 console.log('[TontineClub] API_URL:', API_URL);
 
 // Cross-platform storage helper
@@ -34,28 +33,33 @@ const storage = {
   },
 };
 
-// Helper: fetch subscription status using a token directly (avoids SecureStore race)
-async function fetchSubscriptionWithToken(token: string) {
+// Helper: apply subscription data to subscription store AND persist locally
+async function applyAndPersistSubscription(sub: any) {
+  if (!sub) return;
+  
+  const subState = {
+    status: sub.status || 'none',
+    hasAccess: sub.has_access === true,
+    trialEnd: sub.trial_end || null,
+    subscriptionEnd: sub.subscription_end || null,
+    plan: sub.plan || null,
+  };
+
+  // 1. Update Zustand store synchronously (instant UI update)
+  useSubscriptionStore.setState({
+    ...subState,
+    isLoading: false,
+    isChecked: true,
+  });
+
+  // 2. Persist to local storage (so app restart works offline)
   try {
-    const res = await axios.get(`${API_URL}/api/subscription/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = res.data;
-    useSubscriptionStore.setState({
-      status: data.status,
-      hasAccess: data.has_access,
-      trialEnd: data.trial_end,
-      subscriptionEnd: data.subscription_end,
-      plan: data.plan,
-      isLoading: false,
-      isChecked: true,
-    });
-    console.log('[TontineClub] Subscription loaded:', data.status, 'hasAccess:', data.has_access);
-  } catch (e: any) {
-    console.error('[TontineClub] Error fetching subscription:', e.message);
-    // Mark as checked even on error so PaywallView can handle it
-    useSubscriptionStore.setState({ isLoading: false, isChecked: true });
+    await storage.setItem('subscription', JSON.stringify(subState));
+  } catch (e) {
+    console.warn('[TontineClub] Failed to persist subscription:', e);
   }
+
+  console.log('[TontineClub] Subscription applied & persisted:', subState.status, 'hasAccess:', subState.hasAccess);
 }
 
 interface User {
@@ -94,10 +98,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (token && userStr) {
         const user = JSON.parse(userStr);
-        // Fetch subscription BEFORE setting isAuthenticated
-        // This prevents the PaywallView from flashing
-        await fetchSubscriptionWithToken(token);
+        
+        // STEP 1: Load subscription from LOCAL storage FIRST (instant, offline-safe)
+        try {
+          const subStr = await storage.getItem('subscription');
+          if (subStr) {
+            const subData = JSON.parse(subStr);
+            useSubscriptionStore.setState({
+              status: subData.status || 'none',
+              hasAccess: subData.hasAccess === true,
+              trialEnd: subData.trialEnd || null,
+              subscriptionEnd: subData.subscriptionEnd || null,
+              plan: subData.plan || null,
+              isLoading: false,
+              isChecked: true,
+            });
+            console.log('[TontineClub] Subscription loaded from storage: hasAccess=', subData.hasAccess);
+          }
+        } catch (e) {
+          console.warn('[TontineClub] Failed to load subscription from storage:', e);
+        }
+        
+        // STEP 2: Set authenticated IMMEDIATELY (user can use the app with stored data)
         set({ token, user, isAuthenticated: true, isLoading: false });
+        
+        // STEP 3: Refresh subscription from API in background (non-blocking)
+        // This updates the data if something changed server-side (e.g. trial expired)
+        axios.get(`${API_URL}/api/subscription/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000, // 10s timeout for mobile
+        }).then(async (res) => {
+          await applyAndPersistSubscription(res.data);
+          console.log('[TontineClub] Subscription refreshed from API');
+        }).catch((e: any) => {
+          console.warn('[TontineClub] Background subscription refresh failed (using stored data):', e.message);
+        });
+        
       } else {
         set({ isLoading: false });
       }
@@ -109,23 +145,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
-        email,
-        password,
-      });
-
-      const { access_token, user } = response.data;
+      const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+      const { access_token, user, subscription } = response.data;
       
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
       
-      // Fetch subscription BEFORE setting isAuthenticated
-      // Uses the token directly (no SecureStore read needed)
-      await fetchSubscriptionWithToken(access_token);
+      // Apply AND persist subscription data from the SAME login response
+      // No separate API call needed — zero race conditions
+      await applyAndPersistSubscription(subscription);
       
+      // Set authenticated LAST — UI reads this to decide what to show
       set({ token: access_token, user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
-      console.error('[TontineClub] Login error:', error.message, 'URL:', `${API_URL}/api/auth/login`);
+      console.error('[TontineClub] Login error:', error.message);
       const detail = error.response?.data?.detail;
       if (detail) {
         throw new Error(detail);
@@ -139,29 +172,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (email: string, password: string, fullName: string, phone: string, preferredCurrency?: string) => {
     try {
-      const requestBody: any = {
-        email,
-        password,
-        full_name: fullName,
-        phone,
-      };
+      const requestBody: any = { email, password, full_name: fullName, phone };
       if (preferredCurrency) {
         requestBody.preferred_currency = preferredCurrency;
       }
       const response = await axios.post(`${API_URL}/api/auth/register`, requestBody);
-
-      const { access_token, user } = response.data;
+      const { access_token, user, subscription } = response.data;
       
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
       
-      // Fetch subscription BEFORE setting isAuthenticated
-      // Registration auto-activates trial, so this should return hasAccess: true
-      await fetchSubscriptionWithToken(access_token);
+      // Apply AND persist subscription data from the SAME register response
+      await applyAndPersistSubscription(subscription);
       
+      // Set authenticated LAST — UI reads this to decide what to show
       set({ token: access_token, user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
-      console.error('[TontineClub] Register error:', error.message, 'URL:', `${API_URL}/api/auth/register`);
+      console.error('[TontineClub] Register error:', error.message);
       const detail = error.response?.data?.detail;
       if (detail) {
         throw new Error(detail);
@@ -175,19 +202,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
-      // Clear all stored data
       await storage.deleteItem('token');
       await storage.deleteItem('user');
+      await storage.deleteItem('subscription');
     } catch (e) {
       console.error('[TontineClub] Error clearing storage on logout:', e);
     }
-    // Reset subscription store to prevent stale data
     try {
       useSubscriptionStore.getState().reset();
     } catch (e) {
       console.error('[TontineClub] Error resetting subscription store:', e);
     }
-    // Reset auth state - this triggers UI re-renders
     set({ token: null, user: null, isAuthenticated: false, isLoading: false });
   },
 
@@ -197,7 +222,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await axios.put(`${API_URL}/api/auth/profile`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
       const user = response.data;
       await storage.setItem('user', JSON.stringify(user));
       set({ user });

@@ -9,7 +9,7 @@ import json
 import sys
 
 # Base URL from review request
-BASE_URL = "https://club-auth-test.preview.emergentagent.com/api"
+BASE_URL = "https://auth-flow-sync-1.preview.emergentagent.com/api"
 
 def test_existing_credentials():
     """Test with the credentials from review request"""

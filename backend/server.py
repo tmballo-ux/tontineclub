@@ -190,6 +190,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    subscription: Optional[dict] = None
 
 # Tontine Models
 class TontineCreate(BaseModel):
@@ -346,6 +347,37 @@ async def create_notification(user_id: str, notif_type: NotificationType, title:
 TRIAL_DURATION_DAYS = 7
 SUBSCRIPTION_PRICE_USD = 3.00
 
+# Helper: get subscription status for a user (used in login/register responses)
+async def get_subscription_data(user_id: str) -> dict:
+    sub = await db.subscriptions.find_one({"user_id": user_id})
+    if not sub:
+        return {"status": "none", "has_access": False, "trial_end": None, "subscription_end": None, "plan": None}
+    
+    current_status = sub.get("status", "none")
+    has_access = False
+    
+    # Handle enum values
+    if hasattr(current_status, 'value'):
+        current_status = current_status.value
+    
+    if current_status == "trialing":
+        trial_end = sub.get("trial_end")
+        if trial_end and datetime.utcnow() < trial_end:
+            has_access = True
+        else:
+            has_access = False
+            current_status = "expired"
+    elif current_status == "active":
+        has_access = True
+    
+    return {
+        "status": current_status,
+        "has_access": has_access,
+        "trial_end": sub.get("trial_end"),
+        "subscription_end": sub.get("subscription_end"),
+        "plan": sub.get("plan"),
+    }
+
 # ===================== AUTH ENDPOINTS =====================
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -399,9 +431,13 @@ async def register(user_data: UserCreate):
     # Create token
     access_token = create_access_token({"sub": user.id})
     
+    # Get subscription data to include in response
+    sub_data = await get_subscription_data(user.id)
+    
     return TokenResponse(
         access_token=access_token,
-        user=UserResponse(**user.dict())
+        user=UserResponse(**user.dict()),
+        subscription=sub_data
     )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
@@ -432,6 +468,9 @@ async def login(credentials: UserLogin):
     
     access_token = create_access_token({"sub": user["id"]})
     
+    # Get subscription data to include in response
+    sub_data = await get_subscription_data(user["id"])
+    
     return TokenResponse(
         access_token=access_token,
         user=UserResponse(
@@ -443,7 +482,8 @@ async def login(credentials: UserLogin):
             preferred_currency=user.get("preferred_currency", "XOF"),
             role=user.get("role", "user"),
             created_at=user["created_at"]
-        )
+        ),
+        subscription=sub_data
     )
 
 @api_router.post("/auth/forgot-password")

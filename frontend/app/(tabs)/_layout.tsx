@@ -24,10 +24,14 @@ export default function TabsLayout() {
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // ONLY fetch if subscription data hasn't been loaded yet
+    // (login/register/loadToken already set isChecked=true)
+    // This is a safety net, not the primary data source
+    if (isAuthenticated && !isChecked) {
+      console.log('[TontineClub] TabsLayout: subscription not checked yet, fetching...');
       fetchStatus();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isChecked]);
 
   // Determine if we need to show overlays
   const showLoading = isAuthenticated && !isChecked && !isAdmin;
@@ -126,6 +130,8 @@ export default function TabsLayout() {
         <View style={styles.overlay}>
           <PaywallView
             onTrialActivated={() => {
+              // Trial was activated — activateTrial already updated the store & persisted
+              // Just fetch fresh status as a safety net
               fetchStatus();
             }}
           />

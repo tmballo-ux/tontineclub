@@ -32,6 +32,20 @@ const getAuthHeader = async () => {
   return { Authorization: `Bearer ${token}` };
 };
 
+// Helper to persist subscription data locally
+const persistSubscription = async (data: { status: string; hasAccess: boolean; trialEnd: string | null; subscriptionEnd: string | null; plan: string | null }) => {
+  try {
+    const value = JSON.stringify(data);
+    if (Platform.OS === 'web') {
+      await AsyncStorage.setItem('subscription', value);
+    } else {
+      await SecureStore.setItemAsync('subscription', value);
+    }
+  } catch (e) {
+    console.warn('[TontineClub] Failed to persist subscription:', e);
+  }
+};
+
 export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   status: 'none',
   hasAccess: false,
@@ -43,21 +57,31 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   fetchStatus: async () => {
     try {
+      // Don't reset hasAccess during loading — keep showing current state
       set({ isLoading: true });
       const headers = await getAuthHeader();
-      const res = await axios.get(`${API_URL}/api/subscription/status`, { headers });
+      const res = await axios.get(`${API_URL}/api/subscription/status`, {
+        headers,
+        timeout: 10000, // 10s timeout for mobile
+      });
       const data = res.data;
-      set({
+      const newState = {
         status: data.status,
         hasAccess: data.has_access,
         trialEnd: data.trial_end,
         subscriptionEnd: data.subscription_end,
         plan: data.plan,
+      };
+      set({
+        ...newState,
         isLoading: false,
         isChecked: true,
       });
+      // Persist the fresh data
+      await persistSubscription(newState);
     } catch (error) {
       console.error('Error fetching subscription:', error);
+      // On error, keep existing hasAccess value — don't reset to false!
       set({ isLoading: false, isChecked: true });
     }
   },
@@ -66,20 +90,30 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     const headers = await getAuthHeader();
     try {
       const res = await axios.post(`${API_URL}/api/subscription/activate-trial`, {}, { headers });
-      set({
-        status: 'trialing',
+      const newState = {
+        status: 'trialing' as SubStatus,
         hasAccess: true,
         trialEnd: res.data.trial_end,
+        subscriptionEnd: null,
         plan: 'tontine_premium_monthly',
-      });
+      };
+      set(newState);
+      await persistSubscription(newState);
       return res.data.message;
     } catch (error: any) {
       // If trial already active (auto-trial from registration), treat as success
       if (error.response?.status === 400 && error.response?.data?.detail) {
         const detail = error.response.data.detail;
         if (detail.includes('déjà') || detail.includes('already')) {
-          // Set hasAccess directly - don't rely on fetchStatus which might fail
-          set({ hasAccess: true, status: 'trialing', isChecked: true, isLoading: false });
+          const newState = {
+            status: 'trialing' as SubStatus,
+            hasAccess: true,
+            trialEnd: get().trialEnd,
+            subscriptionEnd: null,
+            plan: 'tontine_premium_monthly',
+          };
+          set({ ...newState, isChecked: true, isLoading: false });
+          await persistSubscription(newState);
           return "Votre essai gratuit est déjà actif !";
         }
       }

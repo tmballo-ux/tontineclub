@@ -572,48 +572,46 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Change Password API"
-    - "Forgot Password API"
-    - "User Registration API"
-    - "Health Check API"
+    - "Login → Dashboard flow (no paywall for active trial)"
+    - "Register → Dashboard flow (auto-trial)"
+    - "Subscription persistence"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
     message: |
-      🔴 CRITICAL STABILIZATION PHASE - PRE-PLAY STORE SUBMISSION
+      🔴 CRITICAL FIX: Paywall Loop Race Condition
       
-      Multiple bugs fixed in this session. Need comprehensive re-testing of ALL endpoints.
+      ROOT CAUSE IDENTIFIED AND FIXED:
+      The subscription data was NOT persisted locally. When the app restarted on mobile 
+      with slow network, API calls failed and hasAccess defaulted to false → Paywall shown.
       
-      BUGS FIXED:
-      1. subscriptionStore.ts: Was using AsyncStorage instead of SecureStore on Android → Token always null → "Token invalide" error
-      2. profile.tsx: Same AsyncStorage vs SecureStore mismatch fixed
-      3. Forgot Password API: Was expecting query param, frontend sends JSON body → Fixed backend to accept JSON body
-      4. Change Password API: NEW endpoint added POST /api/auth/change-password. Previously was MOCKED (just showed success without calling backend)
-      5. Change Password: Fixed KeyError 'hashed_password' → should be 'password_hash'
-      6. Registration: Now sends preferred_currency to backend (was missing)
-      7. Error handling improved: Network errors, specific API errors now shown to user
-      8. Health endpoint added: GET /api/health
-      9. Duplicate health endpoint removed
+      CHANGES MADE:
+      1. authStore.ts: 
+         - login() and register() now persist subscription to local storage
+         - loadToken() loads subscription from LOCAL storage FIRST (instant, offline-safe)
+         - Background API refresh updates data without blocking the UI
+         - logout() clears subscription from storage
+      2. subscriptionStore.ts:
+         - fetchStatus() preserves existing hasAccess on error (doesn't reset to false)
+         - activateTrial() persists data to local storage
+         - Added persistSubscription helper
+      3. (tabs)/_layout.tsx:
+         - useEffect only calls fetchStatus() if !isChecked (avoids double-fetch)
       
-      TEST ALL ENDPOINTS THOROUGHLY:
-      - Register with preferred_currency
-      - Login (correct + wrong password)
-      - Forgot password (JSON body format)
-      - Change password (correct current, wrong current, short new password)
-      - Profile update
-      - Subscription (status, activate trial, cancel)
-      - Tontine CRUD
-      - Invitations
-      - Dashboard
-      - Notifications
-      - Account deletion
-      - Health check
+      TESTING NEEDED:
+      - POST /api/auth/login → verify subscription object returned
+      - POST /api/auth/register → verify subscription object returned with auto-trial
+      - GET /api/subscription/status → verify status returned correctly
+      - POST /api/subscription/activate-trial → verify trial activation
       
-      Test credentials: test@tontineclub.com / Test123!
-      Backend URL: https://club-auth-test.preview.emergentagent.com
+      Test credentials: 
+      - Admin: t.mballo@gmail.com / REDACTED_ADMIN_PASSWORD
+      - Test user (expired trial): test@tontineclub.com / Test123!
+      - New user: newflowtest@test.com / TestPass123!
+      Backend URL: https://auth-flow-sync-1.preview.emergentagent.com
   - agent: "main"
     message: |
       TontineClub MVP implementation complete. 
@@ -880,3 +878,40 @@ agent_communication:
       
       📊 FINAL TEST RESULTS: 25/25 tests passed (100% success rate)
       🚀 TontineClub Backend API is FULLY READY for Play Store submission!
+  - agent: "testing"
+    message: |
+      🎯 AUTH & SUBSCRIPTION FLOW TESTING COMPLETED - 100% SUCCESS
+      
+      ✅ CRITICAL ENDPOINTS TESTED AS PER REVIEW REQUEST:
+      1. POST /api/auth/login with admin credentials (t.mballo@gmail.com / REDACTED_ADMIN_PASSWORD) ✅
+         • Verified subscription object includes: has_access=true, status="trialing", trial_end, plan fields ✅
+      
+      2. POST /api/auth/register with new unique user (authtest1775255197@test.com) ✅
+         • Verified subscription object includes: has_access=true, status="trialing" (auto-trial on registration) ✅
+      
+      3. POST /api/auth/login with newly registered user ✅
+         • Verified subscription object shows: has_access=true, status="trialing" ✅
+      
+      4. GET /api/subscription/status with new user's token ✅
+         • Verified returns: has_access=true, status="trialing", trial dates, plan info ✅
+      
+      5. POST /api/subscription/activate-trial with user that already has trial ✅
+         • Verified returns 400 with French message: "Vous avez déjà un abonnement ou essai actif." ✅
+      
+      6. Login with test@tontineclub.com / Test123! ✅
+         • Verified subscription shows expired trial: has_access=false, status="expired" ✅
+      
+      ✅ SUBSCRIPTION OBJECT VALIDATION:
+      • All auth endpoints (login/register) properly return subscription object ✅
+      • Auto-trial activation on registration working correctly ✅
+      • Subscription status endpoint provides complete subscription details ✅
+      • Duplicate trial prevention working with proper error messages ✅
+      • Expired trial users correctly blocked from access ✅
+      
+      ✅ AUTHENTICATION & SECURITY:
+      • JWT token generation and validation working correctly ✅
+      • Proper Bearer token authentication for subscription endpoints ✅
+      • Admin and regular user credentials both working ✅
+      
+      📊 TEST RESULTS: 6/6 tests passed (100% success rate)
+      🚀 Auth & Subscription Flow is FULLY FUNCTIONAL and ready for production!
