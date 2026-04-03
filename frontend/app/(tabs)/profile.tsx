@@ -112,15 +112,14 @@ export default function ProfileScreen() {
       window.location.href = '/';
       return;
     }
-    // On mobile, use normal logout then navigate
+    // On mobile: clear state then navigate
     try {
       await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
-    setTimeout(() => {
-      router.replace('/');
-    }, 50);
+    // Navigate to welcome screen after state is cleared
+    router.replace('/');
   };
 
   const handleDeleteCheck = async () => {

@@ -78,7 +78,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       if (error.response?.status === 400 && error.response?.data?.detail) {
         const detail = error.response.data.detail;
         if (detail.includes('déjà') || detail.includes('already')) {
-          await get().fetchStatus();
+          // Set hasAccess directly - don't rely on fetchStatus which might fail
+          set({ hasAccess: true, status: 'trialing', isChecked: true, isLoading: false });
           return "Votre essai gratuit est déjà actif !";
         }
       }

@@ -86,9 +86,7 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
       return;
     }
     await logout();
-    setTimeout(() => {
-      router.replace('/');
-    }, 50);
+    router.replace('/');
   };
 
   return (
@@ -150,22 +148,33 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           </View>
         )}
 
-        {/* CTA Button */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={handleStartTrial}
-          disabled={loading || !!successMsg}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="rocket" size={20} color="#FFFFFF" />
-              <Text style={styles.ctaText}>{t('paywall.startTrial')}</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {/* CTA Button - Show "Continue" when trial is already active, "Start trial" otherwise */}
+        {(successMsg || hasAccess) ? (
+          <TouchableOpacity
+            style={[styles.ctaButton, { backgroundColor: '#059669' }]}
+            onPress={() => onTrialActivated()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            <Text style={styles.ctaText}>{t('paywall.continueButton') || 'Accéder au tableau de bord'}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={handleStartTrial}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="rocket" size={20} color="#FFFFFF" />
+                <Text style={styles.ctaText}>{t('paywall.startTrial')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Legal Text */}
         <Text style={styles.legalText}>{t('paywall.legalText')}</Text>
