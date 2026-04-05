@@ -22,27 +22,44 @@ export interface SubscriptionState {
   reset: () => void;
 }
 
+// ============================================================
+// FIX #3: Robust token retrieval with SecureStore fallback
+// ============================================================
 const getAuthHeader = async () => {
   let token: string | null = null;
   if (Platform.OS === 'web') {
     token = await AsyncStorage.getItem('token');
   } else {
-    token = await SecureStore.getItemAsync('token');
+    // Try SecureStore first, fall back to AsyncStorage
+    try {
+      token = await SecureStore.getItemAsync('token');
+    } catch (e) {
+      console.warn('[TontineClub] SecureStore failed for token, trying AsyncStorage');
+    }
+    if (!token) {
+      try {
+        token = await AsyncStorage.getItem('token');
+      } catch (e) {
+        console.warn('[TontineClub] AsyncStorage also failed for token');
+      }
+    }
   }
   return { Authorization: `Bearer ${token}` };
 };
 
-// Helper to persist subscription data locally
+// Persist subscription to storage with SecureStore fallback
 const persistSubscription = async (data: { status: string; hasAccess: boolean; trialEnd: string | null; subscriptionEnd: string | null; plan: string | null }) => {
+  const value = JSON.stringify(data);
+  if (Platform.OS === 'web') {
+    try { await AsyncStorage.setItem('subscription', value); } catch (e) {}
+    return;
+  }
+  // Native: try SecureStore, fall back to AsyncStorage
   try {
-    const value = JSON.stringify(data);
-    if (Platform.OS === 'web') {
-      await AsyncStorage.setItem('subscription', value);
-    } else {
-      await SecureStore.setItemAsync('subscription', value);
-    }
+    await SecureStore.setItemAsync('subscription', value);
   } catch (e) {
-    console.warn('[TontineClub] Failed to persist subscription:', e);
+    console.warn('[TontineClub] SecureStore failed for subscription, using AsyncStorage');
+    try { await AsyncStorage.setItem('subscription', value); } catch (e2) {}
   }
 };
 
@@ -57,17 +74,16 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   fetchStatus: async () => {
     try {
-      // Don't reset hasAccess during loading — keep showing current state
       set({ isLoading: true });
       const headers = await getAuthHeader();
       const res = await axios.get(`${API_URL}/api/subscription/status`, {
         headers,
-        timeout: 10000, // 10s timeout for mobile
+        timeout: 10000,
       });
       const data = res.data;
       const newState = {
         status: data.status,
-        hasAccess: data.has_access,
+        hasAccess: data.has_access === true,
         trialEnd: data.trial_end,
         subscriptionEnd: data.subscription_end,
         plan: data.plan,
@@ -77,11 +93,10 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         isLoading: false,
         isChecked: true,
       });
-      // Persist the fresh data
       await persistSubscription(newState);
     } catch (error) {
-      console.error('Error fetching subscription:', error);
-      // On error, keep existing hasAccess value — don't reset to false!
+      console.error('[TontineClub] Error fetching subscription:', error);
+      // On error, keep existing hasAccess — don't reset to false
       set({ isLoading: false, isChecked: true });
     }
   },
@@ -97,12 +112,12 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         subscriptionEnd: null,
         plan: 'tontine_premium_monthly',
       };
-      set(newState);
+      set({ ...newState, isLoading: false, isChecked: true });
       await persistSubscription(newState);
       return res.data.message;
     } catch (error: any) {
       // On ANY error, fetch the REAL status from the server
-      // Do NOT blindly set hasAccess=true — the trial might be expired
+      // Do NOT blindly set hasAccess=true
       console.log('[TontineClub] activateTrial error, fetching real status...');
       try {
         const statusHeaders = await getAuthHeader();
@@ -120,16 +135,15 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
         };
         set({ ...realState, isLoading: false, isChecked: true });
         await persistSubscription(realState);
-        
+
         if (realState.hasAccess) {
           return "Votre essai gratuit est déjà actif !";
         }
       } catch (fetchErr) {
-        console.error('[TontineClub] Failed to fetch real status after trial error:', fetchErr);
+        console.error('[TontineClub] Failed to fetch real status:', fetchErr);
       }
-      
-      // If we get here, the trial activation truly failed
-      console.error('[TontineClub] Trial error:', error.response?.data || error.message);
+
+      console.error('[TontineClub] Trial activation failed:', error.response?.data || error.message);
       throw error;
     }
   },

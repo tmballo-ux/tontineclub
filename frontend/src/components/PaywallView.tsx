@@ -31,13 +31,15 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [trialExpired, setTrialExpired] = useState(false);
 
-  // Auto-redirect ONLY if subscription is TRULY active (not from stale state)
+  // ============================================================
+  // FIX #2: Auto-dismiss covers 'canceled' status too
+  // Users with canceled subscription but remaining time still have access
+  // ============================================================
   useEffect(() => {
-    if (hasAccess && (status === 'trialing' || status === 'active')) {
+    if (hasAccess && (status === 'trialing' || status === 'active' || status === 'canceled')) {
       console.log('[TontineClub] PaywallView: subscription active, dismissing paywall');
       onTrialActivated();
     }
-    // If status is expired, show appropriate UI
     if (status === 'expired') {
       setTrialExpired(true);
     }

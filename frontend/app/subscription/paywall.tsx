@@ -38,11 +38,24 @@ export default function PaywallScreen() {
     try {
       const msg = await activateTrial();
       setSuccessMsg(msg);
-      // Small delay then navigate back - the tabs layout will recheck subscription
-      setTimeout(() => {
-        router.replace('/');
-      }, 1500);
+      // FIX #4: After trial activation, confirm has_access before navigating
+      // Do NOT use router.replace('/') which creates redirect chains
+      setTimeout(async () => {
+        const { fetchStatus } = useSubscriptionStore.getState();
+        await fetchStatus();
+        const confirmed = useSubscriptionStore.getState();
+        if (confirmed.hasAccess) {
+          router.replace('/(tabs)');
+        }
+      }, 1000);
     } catch (e: any) {
+      // activateTrial already fetched real status internally
+      const currentState = useSubscriptionStore.getState();
+      if (currentState.hasAccess) {
+        setSuccessMsg('Votre essai est actif !');
+        setTimeout(() => { router.replace('/(tabs)'); }, 1000);
+        return;
+      }
       setErrorMsg(e.response?.data?.detail || 'Erreur lors de l\'activation');
     } finally {
       setLoading(false);

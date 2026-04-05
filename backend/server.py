@@ -347,7 +347,9 @@ async def create_notification(user_id: str, notif_type: NotificationType, title:
 TRIAL_DURATION_DAYS = 7
 SUBSCRIPTION_PRICE_USD = 3.00
 
-# Helper: get subscription status for a user (used in login/register responses)
+# Helper: get subscription status for a user (SINGLE source of truth for ALL endpoints)
+# FIX #5: Both login response AND /subscription/status use this SAME function
+# FIX #2: Handle 'canceled' status — if remaining time, user still has access
 async def get_subscription_data(user_id: str) -> dict:
     sub = await db.subscriptions.find_one({"user_id": user_id})
     if not sub:
@@ -360,21 +362,23 @@ async def get_subscription_data(user_id: str) -> dict:
     if hasattr(current_status, 'value'):
         current_status = current_status.value
     
+    now = datetime.utcnow()
+    
     if current_status == "trialing":
         trial_end = sub.get("trial_end")
-        if trial_end and datetime.utcnow() < trial_end:
+        if trial_end and now < trial_end:
             has_access = True
         else:
             has_access = False
             current_status = "expired"
-            # CRITICAL: Also update the DB so activate-trial doesn't get confused
+            # Update DB so activate-trial doesn't get confused
             await db.subscriptions.update_one(
                 {"user_id": user_id},
                 {"$set": {"status": SubscriptionStatus.EXPIRED}}
             )
     elif current_status == "active":
         sub_end = sub.get("subscription_end")
-        if sub_end and datetime.utcnow() > sub_end:
+        if sub_end and now > sub_end:
             has_access = False
             current_status = "expired"
             await db.subscriptions.update_one(
@@ -383,6 +387,18 @@ async def get_subscription_data(user_id: str) -> dict:
             )
         else:
             has_access = True
+    elif current_status == "canceled":
+        # FIX #2: Canceled but still has remaining time = still has access
+        end_date = sub.get("subscription_end") or sub.get("trial_end")
+        if end_date and now < end_date:
+            has_access = True
+        else:
+            has_access = False
+            current_status = "expired"
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": SubscriptionStatus.EXPIRED}}
+            )
     
     return {
         "status": current_status,
@@ -1482,53 +1498,10 @@ async def get_tontine_history(tontine_id: str, current_user: dict = Depends(get_
 
 @api_router.get("/subscription/status")
 async def get_subscription_status(current_user: dict = Depends(get_current_user)):
-    """Check user's current subscription status."""
+    """Check user's current subscription status.
+    FIX #5: Uses the SAME get_subscription_data() as login/register — single source of truth."""
     user_id = current_user["id"]
-    sub = await db.subscriptions.find_one({"user_id": user_id})
-    
-    if not sub:
-        return {
-            "status": SubscriptionStatus.NONE,
-            "has_access": False,
-            "trial_end": None,
-            "subscription_end": None,
-            "plan": None,
-        }
-    
-    now = datetime.utcnow()
-    current_status = sub.get("status", SubscriptionStatus.NONE)
-    
-    # Check if trial or subscription has expired
-    if current_status == SubscriptionStatus.TRIALING:
-        trial_end = sub.get("trial_end")
-        if trial_end and now > trial_end:
-            await db.subscriptions.update_one(
-                {"user_id": user_id},
-                {"$set": {"status": SubscriptionStatus.EXPIRED}}
-            )
-            current_status = SubscriptionStatus.EXPIRED
-    
-    if current_status == SubscriptionStatus.ACTIVE:
-        sub_end = sub.get("subscription_end")
-        if sub_end and now > sub_end:
-            await db.subscriptions.update_one(
-                {"user_id": user_id},
-                {"$set": {"status": SubscriptionStatus.EXPIRED}}
-            )
-            current_status = SubscriptionStatus.EXPIRED
-    
-    has_access = current_status in [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE]
-    
-    return {
-        "status": current_status,
-        "has_access": has_access,
-        "trial_start": sub.get("trial_start"),
-        "trial_end": sub.get("trial_end"),
-        "subscription_start": sub.get("subscription_start"),
-        "subscription_end": sub.get("subscription_end"),
-        "plan": sub.get("plan"),
-        "purchase_token": sub.get("purchase_token"),
-    }
+    return await get_subscription_data(user_id)
 
 @api_router.post("/subscription/activate-trial")
 async def activate_trial(current_user: dict = Depends(get_current_user)):
