@@ -190,8 +190,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
 
-      // Apply AND persist subscription from the SAME login response
-      await applyAndPersistSubscription(subscription);
+      // If backend returns subscription inline (new code), use it directly
+      if (subscription && subscription.status) {
+        await applyAndPersistSubscription(subscription);
+      } else {
+        // Fallback: fetch subscription separately (old backend code)
+        try {
+          const subRes = await axios.get(`${API_URL}/api/subscription/status`, {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: 10000,
+          });
+          await applyAndPersistSubscription(subRes.data);
+        } catch (subErr) {
+          console.warn('[TontineClub] Failed to fetch subscription after login:', subErr);
+          useSubscriptionStore.setState({ isLoading: false, isChecked: true });
+        }
+      }
 
       // Set authenticated LAST
       set({ token: access_token, user, isAuthenticated: true, isLoading: false });
@@ -220,8 +234,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await storage.setItem('token', access_token);
       await storage.setItem('user', JSON.stringify(user));
 
-      // Apply AND persist subscription from the SAME register response
-      await applyAndPersistSubscription(subscription);
+      // If backend returns subscription inline (new code), use it directly
+      if (subscription && subscription.status) {
+        await applyAndPersistSubscription(subscription);
+      } else {
+        // Fallback: fetch subscription separately (old backend code)
+        try {
+          const subRes = await axios.get(`${API_URL}/api/subscription/status`, {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: 10000,
+          });
+          await applyAndPersistSubscription(subRes.data);
+        } catch (subErr) {
+          console.warn('[TontineClub] Failed to fetch subscription after register:', subErr);
+          useSubscriptionStore.setState({ isLoading: false, isChecked: true });
+        }
+      }
 
       // Set authenticated LAST
       set({ token: access_token, user, isAuthenticated: true, isLoading: false });
