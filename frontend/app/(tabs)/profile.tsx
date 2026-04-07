@@ -101,25 +101,34 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    // ============================================================
+    // LOGOUT FLOW: 
+    // 1. Call logout() which clears ALL stores + storage synchronously
+    // 2. Root Layout auth guard detects isAuthenticated=false
+    // 3. Root Layout automatically redirects to '/' (welcome screen)
+    // No manual navigation needed — the guard handles everything.
+    // ============================================================
     if (Platform.OS === 'web') {
-      // On web, clear storage directly and force full page reload
-      // This avoids the Zustand + Expo Router render loop issue
       try {
-        localStorage.clear();
+        await logout();
       } catch (e) {
-        console.error('Error clearing localStorage:', e);
+        console.error('[TontineClub] Web logout error:', e);
       }
+      // On web, force a full page reload to ensure clean state
+      try { localStorage.clear(); } catch (_) {}
       window.location.href = '/';
       return;
     }
-    // On mobile: clear state then navigate
+    
+    // On mobile: just call logout — Root Layout auth guard handles redirection
     try {
       await logout();
+      console.log('[TontineClub] Mobile logout complete — auth guard will redirect');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('[TontineClub] Logout error:', error);
+      // Even if logout throws, force navigate as safety net
+      router.replace('/');
     }
-    // Navigate to welcome screen after state is cleared
-    router.replace('/');
   };
 
   const handleDeleteCheck = async () => {
@@ -144,8 +153,9 @@ export default function ProfileScreen() {
       await axios.post(`${API_URL}/api/account/delete`, {
         password: deletePassword, confirm: true,
       }, { headers: { Authorization: `Bearer ${storedToken}` } });
+      setShowDeleteModal(false);
       await logout();
-      router.replace('/');
+      // Auth guard in Root Layout handles redirect to /
     } catch (e: any) {
       const msg = e.response?.data?.detail || t('profile.deletionError');
       setErrorMsg(msg);

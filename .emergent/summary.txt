@@ -1,161 +1,162 @@
 <analysis>**original_problem_statement**: 
-The user is building **TontineClub**, a highly professional fintech mobile application to manage tontines (savings circles/clubs). The app requires a professional UI/UX, multi-language support (FR, EN, ES), and a production-ready configuration for Google Play Store publication (EAS Build / .AAB). 
-After successfully generating an  build, testers reported several critical bugs. The user has explicitly demanded a **CRITICAL QUALITY ASSURANCE (QA) STABILIZATION PHASE**. All blocking bugs, UX issues, translation gaps, and navigation errors must be completely resolved before generating the next build. Additionally, a separated Web-based Admin Dashboard and real email delivery for password resets were requested and implemented.
+L'utilisateur exige un audit complet et une stabilisation définitive de l'application TontineClub, en se concentrant spécifiquement sur le cycle d'authentification, de navigation et de déconnexion (Logout). Le problème immédiat est qu'après la déconnexion, l'application revient à l'accueil mais le flux n'est pas propre (états résiduels, problèmes de navigation, caches non vidés).
+PRODUCT REQUIREMENTS : Le flux de login/logout/navigation doit être 100% fiable. La déconnexion doit purger intégralement les stores (Zustand), le stockage local (SecureStore/AsyncStorage) et rediriger proprement sans possibilité de retour en arrière vers les routes protégées.
 
-**User's preferred language**: Français (French)
-**(INSTRUCT NEXT AGENT: You MUST automatically detect the user's primary language from their messages and INSTRUCT next agent to respond in the user's preferred language only. Therefore, you MUST communicate entirely in French.)**
+**User's preferred language**: French (Français)
+(INSTRUCT NEXT AGENT: You MUST respond entirely in the user's preferred language: Français)
 
 **what currently exists?** 
-A production-ready Expo React Native app with a FastAPI/MongoDB backend. The backend is 100% tested and stable. Features include JWT authentication, Tontine management, mocked Premium Subscriptions, full i18n infrastructure, a dedicated Web-Admin dashboard (), and Resend email integration for password resets.
+Une application mobile Expo React Native avec un backend FastAPI/MongoDB. L'application utilise Expo Router pour la navigation et Zustand pour la gestion d'état (, ). Un panel d'administration HTML/JS est servi directement par le backend. L'application gère des abonnements et essais gratuits.
 
-**Last working item**:
-- **Last item agent was working**: Fixing the massive QA bug list provided by the user. Specifically, the agent was in the middle of replacing hardcoded French strings with the  translation function in  and .
+**Last working item**: 
+- **Last item agent was working**: L'agent venait de démarrer l'audit complet du cycle d'authentification exigé par l'utilisateur. Il était en train de lire les fichiers critiques ( et ) pour analyser pourquoi le logout laisse l'application dans un dirty state.
 - **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: Frontend testing agent / Screenshot tool (after fixing the UI/UX issues).
+- **Which testing method agent to use?**: Frontend testing agent / Screenshot tool (Doit valider rigoureusement le flux complet : Login -> Navigation privée -> Logout -> Tentative d'accès privé -> Re-login).
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**: 
-Most recent working item that is pending or in progress by default is of HIGHEST priority, ie P0.
+  - Issue 1: (P0) **Audit et Refactor de la Déconnexion (Logout) & Purge d'État**
+     - Attempted fixes: L'agent a juste commencé l'analyse. Aucun correctif appliqué dans cette nouvelle phase d'audit.
+     - Next debug checklist: 
+       -  &  : S'assurer que  déclenche un reset complet de *tous* les stores Zustand à leur état initial.
+       - S'assurer que le nettoyage  (et son fallback ) efface bien  ET .
+       -  (Root et Tabs) : Vérifier que la redirection après logout utilise  (ou ) pour détruire l'historique de navigation.
+     - Why fix this issue and what will be achieved with the fix?: L'utilisateur a signalé que des sessions fantômes ou des données résiduelles corrompent l'app après une déconnexion, rendant l'expérience instable. 
+     - Status: IN PROGRESS
+     - Is recurring issue? Y (Les problèmes de session persistent depuis plusieurs itérations).
+     - Should Test frontend/backend/both after fix?: Frontend principalement (cycle de vie).
+     - Blocked on other issue: None.
 
-Issue 1: Massive QA - Translations & Hardcoded Strings (P0)
-  - Attempted fixes: The agent started wrapping hardcoded text in  and  with the  function, but was cut off.
-  - Next debug checklist: Check all screens (, , etc.) to ensure NO hardcoded strings remain. Verify English mode translates everything.
-  - Why fix this issue: User complained that switching to English leaves text like Créer une tontine in French.
-  - Status: IN PROGRESS
-  - Is recurring issue? N
-  - Should Test frontend/backend/both after fix? Frontend (Screenshot/Frontend Agent)
+  - Issue 2: (P0) **Vérification des Guards de Routes (Protected Navigation)**
+     - Attempted fixes: None in this phase.
+     - Next debug checklist: S'assurer qu'un utilisateur déconnecté ne peut absolument pas accéder au dashboard, profil, etc. via le cache ou le bouton retour.
+     - Why fix this issue and what will be achieved with the fix?: Fait partie des exigences strictes de l'audit demandé par l'utilisateur.
+     - Status: NOT STARTED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix?: Frontend.
 
-Issue 2: Massive QA - Bottom Tab Bar Safe Area (P0)
-  - Next debug checklist: Check . Use  from  to add proper  to the Tab Bar so it doesn't overlap Android system buttons.
-  - Why fix this issue: Navigation is too low and hard to click on real Android devices.
-  - Status: NOT STARTED
+  - Issue 3: (P2) **N+1 Queries sur le Backend (Performance)**
+     - Attempted fixes: None.
+     - Next debug checklist: Optimiser  et  dans  via des aggrégations MongoDB au lieu de boucles.
+     - Why fix this issue and what will be achieved with the fix?: Le Health Check a levé des alertes WARN sur ces routes. Peut ralentir l'app en production.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix?: Backend.
 
-Issue 3: Massive QA - Logout / Session Clear Bug (P0)
-  - Next debug checklist: Check  method in . Ensure BOTH  and  are cleared. Ensure Expo Router redirects to  and resets the navigation stack to prevent back-button bypass.
-  - Why fix this issue: Users remain logged in even after clicking disconnect.
-  - Status: NOT STARTED
-
-Issue 4: Massive QA - Notification Click Handling (P0)
-  - Next debug checklist: Check  in . Add proper  routing (using ) based on the notification  (e.g., redirect to Tontine details or Invitations).
-  - Why fix this issue: Clicking notifications currently does nothing.
-  - Status: NOT STARTED
-
-Issue 5: Massive QA - Dark Mode Implementation (P1)
-  - Next debug checklist: Implement a theme provider or update  to support both  and  modes based on system preferences. Update backgrounds, text colors, and cards.
-  - Why fix this issue: Explicit user request for a complete, clean dark mode.
-  - Status: NOT STARTED
-
-Issue 6: Massive QA - Unclickable Elements (P1)
-  - Next debug checklist: Audit the UI for components that look like buttons/cards but lack  handlers.
-  - Why fix this issue: Testers reported clicking elements with no resulting action.
-  - Status: NOT STARTED
-
-**In progress Task List**:
-*(Covered in the Issue List above as they are QA bugs)*
+**In progress Task List**: 
+  - Task 1: **Audit Systématique demandé par l'utilisateur (Checklist de 6 points)**
+     - Where to resume: Continuer l'analyse du flux de navigation et du nettoyage d'état. L'utilisateur a fourni une checklist explicite en 6 points (Login, Logout, Navigation protégée, Rafraîchissement, Gestion API, Tests complets).
+     - What will be achieved with this?: Un flux d'authentification robuste sans états corrompus.
+     - Status: IN PROGRESS
+     - Should Test frontend/backend/both after fix?: Both (fortement axé Frontend).
+     - Blocked on something: None.
 
 **Upcoming and Future Tasks**
-Upcoming Tasks:
-- Implement real  (Google Play Billing) integration to replace the mocked trial system (P1).
-Future Tasks:
-- PDF/Excel exports for tontines (Phase 2).
-- Reliability score system/algorithm (Phase 2).
-- Advanced admin roles (Phase 2).
+    Upcoming Tasks:
+    - Implémentation réelle de  (Google Play Billing) pour remplacer le système d'essai mocké (P1).
+    Future Tasks:
+    - Exports PDF/Excel pour les tontines (Phase 2).
+    - Système de score de fiabilité / algorithme (Phase 2).
+    - Rôles d'administration avancés dans l'app mobile (Phase 2).
 
 **Completed work in this session**
-- Fixed EAS Build pipeline and successfully generated  (versionCode 3).
-- Fixed Critical Auth Bug: Standardized token retrieval across  and  (authStore vs subscriptionStore mismatch).
-- Integrated **Resend** library for real password-reset emails ().
-- Added  and  endpoints.
-- Created a separate Web-Admin Dashboard ( & ) accessible via browser.
-- Passed 100% of Backend Tests via testing subagent (25/25 tests).
+- **5 Corrections structurelles du Paywall/Auth (Recommandées par le support)** (DONE) : 
+  1)  bloquant/synchrone. 
+  2) Gestion du statut 'canceled'. 
+  3) Fallback  pour  (limite Android). 
+  4) Suppression de  dans le paywall standalone. 
+  5) Unification de la logique backend .
+- **Génération du build de production (.aab)** (DONE) : Code mis à jour avec une URL backend permanente au lieu d'une preview temporaire. Suppression d'un fichier corrompu () qui bloquait EAS Build.
+- **Panel Admin** (DONE) : Ajout de la sélection multiple avec checkboxes et suppression groupée des utilisateurs dans .
 
 **Earlier issues found/mentioned but not fixed**
-None outside of the QA list mentioned above.
+   - Issue 1: **N+1 Queries on Dashboard / Tontines**
+   - Debug checklist:  endpoints  et . Remplacer les requêtes en boucle par des aggrégations.
+   - Why to solve this issue and what will be achieved with this?: Prévenir les timeouts serveurs sous forte charge.
+   - Should Test frontend/backend/both after fix: Backend
+   - Is recurring issue? N
 
 **Known issue recurrence from previous fork**
-- Issue recurrence in previous fork: ngrok tunnel 502 timeout connection errors.
-- Recurrence count: 2
-- Status: RESOLVED (intermittent infrastructure error, just restart frontend if it happens).
-- Issue recurrence in previous fork: NPM dependencies throwing errors if  is cleared due to strict Node 18/20 versioning in .
-- Recurrence count: 1
-- Status: RESOLVED
+  - Issue recurrence in previous fork: Déconnexion incomplète (Logout) laissant des résidus de session / Paywall loop / Navigation state stale.
+  - Recurrence count: 4+
+  - Status: IN PROGRESS
+  Note: L'utilisateur est extrêmement frustré par ces régressions. IL NE FAUT PLUS FAIRE DE PATCHS ISOLÉS. Suivez sa directive : un audit complet et systématique de tout l'état global et du cycle de vie de la navigation.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Frontend: Expo React Native, Zustand, Expo Router, i18n, Safe Area Context.
-- Backend: FastAPI, Motor (Async MongoDB), Resend (Email integration).
+- Frontend: Expo React Native, Zustand, Expo Router.
+- Backend: FastAPI, Motor (Async MongoDB). 
 
 **key DB schema**
-- : id, email, full_name, phone, password_hash, preferred_currency, role.
+- : id, email, password_hash, role, created_at.
+- : status, has_access, trial_end, plan.
 
 **changes in tech stack**
-- Added  Python package for transactional emails.
+- N/A
 
 **All files of reference**
--  (Created - handles admin logic securely)
--  (Created - pure HTML/JS frontend for admin)
--  (In progress - i18n fixes)
--  (In progress - i18n fixes)
--  (Modified - fixing logout is pending here)
+-  (Contient la méthode  qui doit être revue).
+-  (Doit être purgé lors du logout).
+-  (Doit rediriger de façon sûre).
+-  (Modifié récemment pour le mass-delete).
+-  &  (Contient la configuration de prod).
 
 **Areas that need refactoring**
--  remains extremely large (1600+ lines). Should be split into route modules (, , etc.) after the QA phase is complete.
+- Le mécanisme de Reset des stores Zustand : Actuellement, le logout dans  ne réinitialise peut-être pas tous les états, et ne purge peut-être pas l'historique de navigation de  correctement.
 
 **key api endpoints**
--  (Now sends real emails)
--  (Serves the admin HTML)
--  (Admin analytics)
+-  (Si applicable côté backend, sinon purement géré côté client).
+-  (Unifié).
+-  (Interface Admin HTML).
 
 **Critical Info for New Agent**
-- **QA IS PRIORITY ZERO:** The user explicitly stated: *Je ne veux plus de version incomplète... Je veux une application propre, stable...*. Do not add new features. Focus 100% on fixing the 7 QA bugs listed above.
-- **Admin Isolation:** The user requested strict separation between the mobile app (for users) and the web admin dashboard (for admins). The admin panel HTML is currently served via the FastAPI backend.
-- **Token Storage Context:** The app utilizes both  (mobile) and  (web/fallback). When fixing the **logout bug**, ensure you delete tokens from BOTH storage mechanisms.
+- **SITUATION CRITIQUE** : L'utilisateur est à bout de patience concernant l'instabilité de la session. Il exige que l'application soit auditée systématiquement. **Lisez son dernier message attentivement**. Il contient une checklist en 6 points (Login, Logout, Navigation protégée, Rafraîchissement d'état, Gestion Backend, Tests complets). Ne finalisez pas la tâche sans avoir vérifié et testé CHAQUE point.
+- Ne créez PLUS de build EAS (L'utilisateur les télécharge sur son Play Store).
+- L'URL backend de production est désormais fixe. Ne hardcodez aucune URL de preview dans les environnements de build.
+- Pour tester le dirty state, simulez une déconnexion, utilisez l'outil de capture d'écran, naviguez en arrière, et vérifiez que l'application reste solidement ancrée sur l'écran de connexion.
+- Lors de l'utilisation de , veillez à conserver le try/catch avec fallback  (limitation Android).
 
 **documents and test reports created in this job**
--  (Updated with 100% backend success metrics)
--  (Updated with Admin account info)
+- N/A dans cette phase spécifique (se référer aux logs précédents).
 
 **Last 10 User Messages and any pending HUMAN messages** 
-- (Latest) Nous avons encore BEAUCOUP de bugs critiques à corriger avant toute nouvelle soumission. Je veux une correction complète et une vraie revue QA... Bugs et problèmes constatés : 1. Notifications, 2. Barre de menu en bas, 3. Traduction, 4. Déconnexion, 5. Politique confidentialité, 6. Mode sombre, 7. Éléments non cliquables... -> **PENDING: Agent started translating hardcoded strings but the rest of the QA list is untouched.**
-- Moi en tant que proprietaire je veux supprimer tous les mots de passe inscrits comment faire car des testeurs mont dit que le lien de renvoie en cas de mot de pas oublié ne fonctionne pas" -> Done (Created Admin panel and integrated Resend).
-- "build fini" -> Done.
-- "je me souviens plus ou on va pour telecharger le fichier .abb je veux anticiper le buid suit son cours" -> Answered.
-- "C:\Users\tmbal>findstr "SecureStore" src\store\subscriptionStore.ts..." -> Done (Verifying token fixes).
-- "est ce que je les tape un apres lautre -> Handled (Git push assistance).
+1. (Latest - PENDING) TontineClub a encore des problèmes. Je veux une vérification complète et systématique... Le logout doit être totalement fiable... Je veux que vous corrigiez de façon définitive, puis que vous validiez vous-mêmes avant de terminer.
+2. (User) Demande si le lien du panel admin est permanent.
+3. (User) Demande de rajouter une sélection multiple pour supprimer des utilisateurs dans l'admin.
+4. (User) Demande le lien admin qui gère l'application.
+5. (User) Rapporte un crash du build (résolu par l'agent en supprimant un fichier corrompu).
+6. (User) Signale que le login/register crashait après 1 heure sur l'APK (Résolu, l'URL pointait vers un conteneur preview mort, a été changé en URL permanente).
 
 **Project Health Check:**
-- Broken: Bottom Tab Navigation (Safe Area), Logout functionality, Notification Clicks, Hardcoded language strings.
-- Mocked: Google Play Subscriptions ( not yet implemented).
+- Broken: Le flux de déconnexion (Logout) laisse l'application dans un dirty state (données résiduelles / navigation instable).
+- Mocked: Trial system (Google Play IAP not yet implemented).
 
 **3rd Party Integrations**
-- Resend (Email) — requires User API Key / Emergent LLM Key (Implemented).
-- Google Play Billing — requires User Google Developer Console setup (Currently Mocked).
+- SMTP Gmail (Backend).
 
 **Testing status**
-- Testing agent used after significant changes: YES (Backend testing agent passed 25/25 endpoints).
-- Troubleshoot agent used after agent stuck in loop: NO.
-- Test files created: None.
-- Known regressions: Hardcoded strings bypassing the i18n system.
+- Testing agent used after significant changes: YES (Backend testing utilisé plus tôt, mais le nouvel audit global Frontend n'a pas encore été testé).
+- Troubleshoot agent used after agent stuck in loop: YES (Utilisé plus tôt).
+- Known regressions: État de session non purgé après Logout.
 
 **Credentials to test flow:**
 (See )
-- Admin:  / 
-- User:  / 
+- Admin panel & Bypass Paywall :  / 
 
 **What agent forgot to execute**
-The agent started the QA review by applying  translations to  and , but did not complete the translation sweep, nor did it address the Safe Area bottom tab issue, the logout session bug, the unclickable UI elements, or the Dark Mode implementation.
+L'agent a reçu la demande d'audit et a appelé  pour les fichiers  et , mais n'a pas encore implémenté le nettoyage total des stores et la refonte des route guards exigés dans le point 2 de la checklist du client.
 
 **Debugging checklist for current issue**
-    Issue: Complete the Massive QA Bug List (Translations, Tab Bar, Logout, Clicks)
-
+    Issue: Dirty state et problèmes de navigation après le Logout
+    
     Frontend files to check: 
-    -  (Add  for bottom padding)
-    -  (Fix  function to clear all storage and reset navigation state)
-    -  (Add  to  in  and finish  wrapping)
-    - All screens in  (Search for hardcoded French text and replace with )
-    - Theme config /  (Prepare dark mode logic)
+    - : La fonction  doit appeler un reset explicite. Ajouter une gestion robuste pour nettoyer SecureStore ET AsyncStorage proprement (await des suppressions).
+    - : Doit fournir une fonction  qui sera appelée par le logout.
+    - : Vérifier que le changement d'état  redirige instantanément vers la page publique  et utilise  ou empêche le retour via l'historique de navigation.
+    - Vérifier si une requête asynchrone (ex: ) n'est pas en train de s'exécuter en arrière-plan pendant le logout et ne reconstruit pas l'état.
   
-    Backend files to check: N/A (Backend is fully tested and stable)</analysis>
+    Backend files to check:
+    - : Vérifier s'il est nécessaire de blacklister ou de traiter le logout côté serveur. (Généralement, pour JWT pur, le nettoyage frontend suffit, mais valider la gestion 401).</analysis>

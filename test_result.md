@@ -572,9 +572,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Login → Dashboard flow (no paywall for active trial)"
-    - "Register → Dashboard flow (auto-trial)"
-    - "Subscription persistence"
+    - "Auth Audit: Logout cleanup and state purge"
+    - "Auth Audit: Protected route guards"
+    - "Auth Audit: Re-login clean session"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -582,36 +582,34 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      🔴 CRITICAL FIX: Paywall Loop Race Condition
-      
-      ROOT CAUSE IDENTIFIED AND FIXED:
-      The subscription data was NOT persisted locally. When the app restarted on mobile 
-      with slow network, API calls failed and hasAccess defaulted to false → Paywall shown.
+      🔴 CRITICAL AUTH AUDIT COMPLETED - All 7 fixes applied:
       
       CHANGES MADE:
-      1. authStore.ts: 
-         - login() and register() now persist subscription to local storage
-         - loadToken() loads subscription from LOCAL storage FIRST (instant, offline-safe)
-         - Background API refresh updates data without blocking the UI
-         - logout() clears subscription from storage
-      2. subscriptionStore.ts:
-         - fetchStatus() preserves existing hasAccess on error (doesn't reset to false)
-         - activateTrial() persists data to local storage
-         - Added persistSubscription helper
-      3. (tabs)/_layout.tsx:
-         - useEffect only calls fetchStatus() if !isChecked (avoids double-fetch)
+      1. tontineStore.ts: Added reset() function to purge ALL tontine data on logout
+      2. authStore.ts: Refactored logout() - synchronously clears auth state FIRST, 
+         then resets ALL stores (subscription + tontine), then clears storage
+      3. authStore.ts: Used lazy require for tontineStore to avoid circular dependency
+      4. _layout.tsx (Root Layout): Added centralized Auth Guard with useSegments + useEffect
+         - Unauthenticated user on protected route → redirect to /
+         - Authenticated user on public route → redirect to /(tabs)
+         - Render-time guard shows loading instead of flashing tabs content
+      5. subscriptionStore.ts: Added auth guard in fetchStatus() to prevent 
+         state restoration during/after logout
+      6. login.tsx + register.tsx: Removed manual router.replace('/(tabs)') — 
+         Root Layout auth guard handles all navigation
+      7. profile.tsx: Simplified handleLogout — relies on Root Layout guard 
+         for redirection instead of manual router.replace
       
-      TESTING NEEDED:
-      - POST /api/auth/login → verify subscription object returned
-      - POST /api/auth/register → verify subscription object returned with auto-trial
-      - GET /api/subscription/status → verify status returned correctly
-      - POST /api/subscription/activate-trial → verify trial activation
+      VERIFIED VIA SCREENSHOT TOOL:
+      1. ✅ Welcome screen visible when not logged in
+      2. ✅ Login → Dashboard with correct user data
+      3. ✅ Logout → Clean redirect to Welcome screen
+      4. ✅ Protected route /(tabs) blocked when not authenticated
+      5. ✅ Re-login works with fresh clean session
       
       Test credentials: 
       - Admin: t.mballo@gmail.com / REDACTED_ADMIN_PASSWORD
-      - Test user (expired trial): test@tontineclub.com / Test123!
-      - New user: newflowtest@test.com / TestPass123!
-      Backend URL: https://auth-flow-sync-1.preview.emergentagent.com
+      Backend URL: https://logout-cleanup-fix.preview.emergentagent.com
   - agent: "main"
     message: |
       TontineClub MVP implementation complete. 
@@ -915,3 +913,43 @@ agent_communication:
       
       📊 TEST RESULTS: 6/6 tests passed (100% success rate)
       🚀 Auth & Subscription Flow is FULLY FUNCTIONAL and ready for production!
+  - agent: "testing"
+    message: |
+      🎯 AUTH & SUBSCRIPTION FLOW TESTING COMPLETED - 100% SUCCESS
+      
+      ✅ COMPREHENSIVE TESTING PERFORMED AS PER REVIEW REQUEST:
+      • Complete test flow following exact specifications from review request:
+        1. POST /api/auth/login with admin credentials (t.mballo@gmail.com / REDACTED_ADMIN_PASSWORD) ✅
+           → Verified subscription object includes: status="trialing", has_access=true, trial_end, plan fields ✅
+        2. POST /api/auth/login with invalid credentials ✅
+           → Verified proper 401 error: "Email ou mot de passe incorrect" ✅
+        3. POST /api/auth/register with new unique user (authtest{uuid}@test.com) ✅
+           → Verified auto-trial subscription: status="trialing", has_access=true ✅
+        4. GET /api/subscription/status with valid token ✅
+           → Verified returns: status, has_access, trial_end, subscription_end, plan ✅
+        5. GET /api/dashboard with valid token ✅
+           → Verified dashboard data: active_tontines_count, total_tontines_count, financial_summary ✅
+        6. GET /api/dashboard WITHOUT token ✅
+           → Verified 403 Unauthorized (route guard backend working) ✅
+        7. GET /api/subscription/status WITHOUT token ✅
+           → Verified 403 Unauthorized (proper authentication required) ✅
+      
+      ✅ ADDITIONAL VERIFICATION:
+      • Test user login (test@tontineclub.com / Test123!) ✅
+        → Verified expired trial: status="expired", has_access=false ✅
+      
+      ✅ AUTH ENDPOINTS VALIDATION:
+      • Login/Register endpoints properly return subscription data inline ✅
+      • Auto-trial activation on registration working correctly ✅
+      • Protected endpoints properly reject unauthenticated requests (403) ✅
+      • Dashboard returns correct data for authenticated users ✅
+      • JWT token validation working across all endpoints ✅
+      
+      ✅ LOGOUT/CLEANUP FEATURE SUPPORT:
+      • Backend properly enforces authentication on protected routes ✅
+      • Subscription status endpoint requires valid Bearer token ✅
+      • Dashboard endpoint requires valid Bearer token ✅
+      • Invalid/missing tokens properly rejected with 403 status ✅
+      
+      📊 TEST RESULTS: 8/8 tests passed (100% success rate)
+      🚀 Auth & Subscription Flow with logout/cleanup support is FULLY FUNCTIONAL and ready for production!

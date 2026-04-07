@@ -44,7 +44,8 @@ export default function LoginScreen() {
     setGeneralError('');
     try {
       await login(email, password);
-      router.replace('/(tabs)');
+      // Auth guard in Root Layout will automatically redirect to /(tabs)
+      // No need for manual router.replace here
     } catch (error: any) {
       const errorMessage = error.message || t('auth.loginError');
       setGeneralError(errorMessage);

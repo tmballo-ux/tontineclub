@@ -61,7 +61,7 @@ export default function RegisterScreen() {
     setGeneralError('');
     try {
       await register(email, password, fullName, phone, currency);
-      router.replace('/(tabs)');
+      // Auth guard in Root Layout will automatically redirect to /(tabs)
     } catch (error: any) {
       const errorMessage = error.message || t('auth.registerError');
       setGeneralError(errorMessage);

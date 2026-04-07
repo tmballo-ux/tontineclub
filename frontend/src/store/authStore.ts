@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { useSubscriptionStore } from './subscriptionStore';
+// NOTE: tontineStore is imported lazily in logout() to avoid circular dependency
+// (authStore → tontineStore → authStore)
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -267,19 +269,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    try {
-      await storage.deleteItem('token');
-      await storage.deleteItem('user');
-      await storage.deleteItem('subscription');
-    } catch (e) {
-      console.error('[TontineClub] Error clearing storage on logout:', e);
-    }
+    console.log('[TontineClub] ========= LOGOUT START =========');
+
+    // STEP 1: Immediately set auth state to false (SYNCHRONOUS)
+    // This prevents any re-renders from triggering protected-route fetches
+    set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+    console.log('[TontineClub] Auth state cleared (isAuthenticated=false)');
+
+    // STEP 2: Reset ALL Zustand stores synchronously
     try {
       useSubscriptionStore.getState().reset();
+      console.log('[TontineClub] subscriptionStore reset');
     } catch (e) {
       console.error('[TontineClub] Error resetting subscription store:', e);
     }
-    set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+
+    try {
+      // Lazy import to avoid circular dependency (authStore → tontineStore → authStore)
+      const { useTontineStore } = require('./tontineStore');
+      useTontineStore.getState().reset();
+      console.log('[TontineClub] tontineStore reset');
+    } catch (e) {
+      console.error('[TontineClub] Error resetting tontine store:', e);
+    }
+
+    // STEP 3: Clear ALL persistent storage (async but non-blocking)
+    try {
+      await Promise.all([
+        storage.deleteItem('token'),
+        storage.deleteItem('user'),
+        storage.deleteItem('subscription'),
+      ]);
+      console.log('[TontineClub] Persistent storage cleared (token, user, subscription)');
+    } catch (e) {
+      console.error('[TontineClub] Error clearing storage on logout:', e);
+    }
+
+    console.log('[TontineClub] ========= LOGOUT COMPLETE =========');
   },
 
   updateProfile: async (data) => {

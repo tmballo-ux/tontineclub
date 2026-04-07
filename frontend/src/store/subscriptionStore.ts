@@ -76,10 +76,26 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     try {
       set({ isLoading: true });
       const headers = await getAuthHeader();
+
+      // Guard: Don't fetch if user is already logged out
+      const { useAuthStore } = require('./authStore');
+      if (!useAuthStore.getState().isAuthenticated) {
+        console.log('[TontineClub] fetchStatus aborted: user is not authenticated');
+        set({ isLoading: false });
+        return;
+      }
+
       const res = await axios.get(`${API_URL}/api/subscription/status`, {
         headers,
         timeout: 10000,
       });
+
+      // Guard: Don't apply response if user logged out while request was in-flight
+      if (!useAuthStore.getState().isAuthenticated) {
+        console.log('[TontineClub] fetchStatus response ignored: user logged out during request');
+        return;
+      }
+
       const data = res.data;
       const newState = {
         status: data.status,

@@ -184,6 +184,7 @@ interface TontineState {
   markAllAsRead: () => Promise<void>;
   
   fetchHistory: (tontineId: string) => Promise<any[]>;
+  reset: () => void;
 }
 
 export const useTontineStore = create<TontineState>((set, get) => ({
@@ -539,5 +540,27 @@ export const useTontineStore = create<TontineState>((set, get) => ({
       console.error('Error fetching history:', error);
       return [];
     }
+  },
+
+  // ============================================================
+  // RESET: Called during logout to purge ALL tontine-related state
+  // Prevents stale data from previous session leaking into new session
+  // ============================================================
+  reset: () => {
+    console.log('[TontineClub] tontineStore.reset() — purging all data');
+    set({
+      tontines: [],
+      enrichedTontines: [],
+      enrichedInvitations: [],
+      currentTontine: null,
+      invitations: [],
+      members: [],
+      cycles: [],
+      contributions: [],
+      notifications: [],
+      dashboard: null,
+      unreadCount: 0,
+      isLoading: false,
+    });
   },
 }));

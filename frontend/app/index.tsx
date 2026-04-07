@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/src/store/authStore';
@@ -13,13 +13,11 @@ export default function WelcomeScreen() {
   const { t } = useTranslation();
   const { height } = useWindowDimensions();
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace('/(tabs)');
-    }
-  }, [isAuthenticated, isLoading]);
+  // Auth guard in Root Layout handles redirect to (tabs) when authenticated
+  // No need for manual redirect here
 
-  if (isLoading) {
+  if (isLoading || isAuthenticated) {
+    // Either still loading or about to be redirected by auth guard
     return null;
   }
 
