@@ -87,3 +87,7 @@ generate_assets.py
 test_existing_credentials.py
 test_result.md
 memory/test_credentials.md
+-e 
+# Environment files
+*.env
+*.env.*
