@@ -127,6 +127,38 @@ def setup_admin_routes(db):
         ]})
         return {"message": f"Utilisateur {user.get('email')} supprimé avec succès"}
 
+    @admin_router.post("/users/bulk-delete")
+    async def admin_bulk_delete_users(data: dict = Body(...), admin=Header(None, alias="authorization")):
+        """Delete multiple users at once"""
+        require_admin(admin)
+        user_ids = data.get("user_ids", [])
+        if not user_ids:
+            raise HTTPException(status_code=400, detail="Aucun utilisateur sélectionné")
+        
+        deleted_count = 0
+        skipped_admin = 0
+        for uid in user_ids:
+            user = await db.users.find_one({"id": uid})
+            if not user:
+                continue
+            # Skip admin users
+            if user.get("role") == "admin":
+                skipped_admin += 1
+                continue
+            await db.users.delete_one({"id": uid})
+            await db.subscriptions.delete_many({"user_id": uid})
+            await db.notifications.delete_many({"user_id": uid})
+            await db.invitations.delete_many({"$or": [
+                {"inviter_id": uid},
+                {"invited_email": user.get("email")}
+            ]})
+            deleted_count += 1
+        
+        msg = f"{deleted_count} utilisateur(s) supprimé(s) avec succès."
+        if skipped_admin > 0:
+            msg += f" {skipped_admin} admin(s) ignoré(s)."
+        return {"message": msg, "deleted": deleted_count, "skipped": skipped_admin}
+
     @admin_router.post("/users/{user_id}/reset-password")
     async def admin_reset_password(user_id: str, data: dict = Body(...), admin=Header(None, alias="authorization")):
         require_admin(admin)

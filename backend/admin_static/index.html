@@ -200,13 +200,24 @@
             </div>
             <div class="data-table">
                 <div class="table-header">
-                    <h5><i class="bi bi-people me-2"></i>Utilisateurs inscrits</h5>
-                    <input type="text" class="search-input" placeholder="Rechercher par nom ou email..." oninput="filterUsers(this.value)">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <h5><i class="bi bi-people me-2"></i>Utilisateurs inscrits</h5>
+                        <span id="selectedCount" class="badge bg-primary" style="display:none;">0 sélectionné(s)</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <input type="text" class="search-input" placeholder="Rechercher par nom ou email..." oninput="filterUsers(this.value)">
+                        <button id="btnDeleteSelected" class="btn btn-danger btn-sm" style="display:none;white-space:nowrap;" onclick="showBulkDeleteModal()">
+                            <i class="bi bi-trash me-1"></i>Supprimer la sélection
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="table" id="usersTable">
                         <thead>
-                            <tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Devise</th><th>Abonnement</th><th>Inscrit le</th><th>Actions</th></tr>
+                            <tr>
+                                <th style="width:40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Tout sélectionner"></th>
+                                <th>Nom</th><th>Email</th><th>Téléphone</th><th>Devise</th><th>Rôle</th><th>Abonnement</th><th>Inscrit le</th><th>Actions</th>
+                            </tr>
                         </thead>
                         <tbody id="usersBody"></tbody>
                     </table>
@@ -321,11 +332,38 @@
     </div>
 </div>
 
+<!-- Bulk Delete Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Suppression groupée</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Vous allez supprimer <strong id="bulkDeleteCount">0</strong> utilisateur(s) :</p>
+                <div id="bulkDeleteList" style="max-height:200px;overflow-y:auto;margin-bottom:16px;padding:8px;background:#F8FAFC;border-radius:8px;font-size:13px;"></div>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Cette action est <strong>irréversible</strong>. Toutes les données de ces utilisateurs seront supprimées. Les comptes admin seront ignorés.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmBulkDelete" onclick="confirmBulkDelete()">
+                    <i class="bi bi-trash me-1"></i> Supprimer tout
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API_BASE = window.location.origin + '/api';
 let adminToken = localStorage.getItem('admin_token') || '';
 let allUsers = [];
+let selectedUserIds = new Set();
 
 // Auto-login if token exists
 if (adminToken) { showAdmin(); loadDashboard(); }
@@ -441,24 +479,117 @@ function renderUsers(users) {
     if (users.length === 0) {
         tbody.innerHTML = '';
         empty.classList.remove('d-none');
+        updateSelectionUI();
         return;
     }
     empty.classList.add('d-none');
     
     tbody.innerHTML = users.map(u => `
         <tr>
+            <td><input type="checkbox" class="user-checkbox" value="${u.id}" onchange="toggleUserSelection('${u.id}')" ${selectedUserIds.has(u.id) ? 'checked' : ''} ${u.role === 'admin' ? 'disabled title="Impossible de supprimer un admin"' : ''}></td>
             <td><strong>${u.full_name || '-'}</strong></td>
             <td>${u.email}</td>
             <td>${u.phone || '-'}</td>
             <td>${u.preferred_currency || 'XOF'}</td>
+            <td><span class="badge-status badge-${u.role === 'admin' ? 'active' : 'none'}">${u.role || 'user'}</span></td>
             <td><span class="badge-status badge-${u.subscription_status}">${u.subscription_status}</span></td>
             <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '-'}</td>
             <td>
                 <button class="btn-action btn-reset me-1" onclick="showResetPassword('${u.id}','${u.email}')"><i class="bi bi-key"></i></button>
-                <button class="btn-action btn-delete" onclick="showDeleteUser('${u.id}','${u.email}')"><i class="bi bi-trash"></i></button>
+                ${u.role !== 'admin' ? `<button class="btn-action btn-delete" onclick="showDeleteUser('${u.id}','${u.email}')"><i class="bi bi-trash"></i></button>` : ''}
             </td>
         </tr>
     `).join('');
+    updateSelectionUI();
+}
+
+function toggleUserSelection(userId) {
+    if (selectedUserIds.has(userId)) {
+        selectedUserIds.delete(userId);
+    } else {
+        selectedUserIds.add(userId);
+    }
+    updateSelectionUI();
+}
+
+function toggleSelectAll(checked) {
+    const checkboxes = document.querySelectorAll('.user-checkbox:not(:disabled)');
+    checkboxes.forEach(cb => {
+        cb.checked = checked;
+        if (checked) {
+            selectedUserIds.add(cb.value);
+        } else {
+            selectedUserIds.delete(cb.value);
+        }
+    });
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    const count = selectedUserIds.size;
+    const badge = document.getElementById('selectedCount');
+    const btn = document.getElementById('btnDeleteSelected');
+    const selectAllCb = document.getElementById('selectAll');
+    
+    if (count > 0) {
+        badge.style.display = 'inline';
+        badge.textContent = `${count} sélectionné(s)`;
+        btn.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
+        btn.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    const checkboxes = document.querySelectorAll('.user-checkbox:not(:disabled)');
+    if (checkboxes.length > 0 && count === checkboxes.length) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+    } else if (count > 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+    } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    }
+}
+
+function showBulkDeleteModal() {
+    const selectedUsers = allUsers.filter(u => selectedUserIds.has(u.id));
+    document.getElementById('bulkDeleteCount').textContent = selectedUsers.length;
+    document.getElementById('bulkDeleteList').innerHTML = selectedUsers.map(u => 
+        `<div style="padding:4px 0;border-bottom:1px solid #E2E8F0;">
+            <strong>${u.full_name || '-'}</strong> — ${u.email}
+        </div>`
+    ).join('');
+    new bootstrap.Modal(document.getElementById('bulkDeleteModal')).show();
+}
+
+async function confirmBulkDelete() {
+    const btn = document.getElementById('btnConfirmBulkDelete');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Suppression...';
+    
+    try {
+        const res = await fetch(`${API_BASE}/admin/users/bulk-delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ user_ids: Array.from(selectedUserIds) })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Erreur');
+        
+        alert(data.message);
+        selectedUserIds.clear();
+        bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
+        loadUsers();
+        loadDashboard();
+    } catch (err) {
+        alert('Erreur: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i> Supprimer tout';
+    }
 }
 
 function filterUsers(query) {
