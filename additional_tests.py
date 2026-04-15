@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-BASE_URL = "https://logout-cleanup-fix.preview.emergentagent.com/api"
+BASE_URL = "https://expo-payment.preview.emergentagent.com/api"
 
 class AdditionalAPITests:
     def __init__(self):

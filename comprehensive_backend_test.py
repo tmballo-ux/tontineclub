@@ -12,7 +12,7 @@ from datetime import datetime
 import uuid
 
 # Base URL from frontend/.env
-BASE_URL = "https://logout-cleanup-fix.preview.emergentagent.com/api"
+BASE_URL = "https://expo-payment.preview.emergentagent.com/api"
 
 class ComprehensiveTester:
     def __init__(self):

@@ -609,7 +609,7 @@ agent_communication:
       
       Test credentials: 
       - Admin: t.mballo@gmail.com / REDACTED_ADMIN_PASSWORD
-      Backend URL: https://logout-cleanup-fix.preview.emergentagent.com
+      Backend URL: https://expo-payment.preview.emergentagent.com
   - agent: "main"
     message: |
       TontineClub MVP implementation complete. 

@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 
 # Backend URL from review request
-BASE_URL = "https://logout-cleanup-fix.preview.emergentagent.com"
+BASE_URL = "https://expo-payment.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials from /app/memory/test_credentials.md
