@@ -28,7 +28,8 @@
         "CAMERA",
         "READ_MEDIA_IMAGES",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "com.android.vending.BILLING"
       ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -60,7 +61,8 @@
           "photosPermission": "Choisir votre photo de profil",
           "cameraPermission": "Prendre votre photo de profil"
         }
-      ]
+      ],
+      "react-native-iap"
     ],
     "experiments": {
       "typedRoutes": true

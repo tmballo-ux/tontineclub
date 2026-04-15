@@ -130,8 +130,7 @@ export default function TabsLayout() {
         <View style={styles.overlay}>
           <PaywallView
             onTrialActivated={() => {
-              // Trial was activated — activateTrial already updated the store & persisted
-              // Just fetch fresh status as a safety net
+              // Subscription activated via Google Play — refresh status
               fetchStatus();
             }}
           />

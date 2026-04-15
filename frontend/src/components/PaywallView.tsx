@@ -11,39 +11,46 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useSubscriptionStore } from '@/src/store/subscriptionStore';
+import { useSubscriptionStore, GOOGLE_PLAY_PRODUCT_ID } from '@/src/store/subscriptionStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
 import { colors, shadows } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { IAP_AVAILABLE, initIAP, endIAP, purchaseSubscription, acknowledgeSubscription } from '@/src/services/iap';
 
 interface PaywallProps {
   onTrialActivated: () => void;
 }
 
 export default function PaywallView({ onTrialActivated }: PaywallProps) {
-  const { activateTrial, hasAccess, status, fetchStatus } = useSubscriptionStore();
+  const { hasAccess, status, fetchStatus, verifyPurchase } = useSubscriptionStore();
   const { logout } = useAuthStore();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [trialExpired, setTrialExpired] = useState(false);
+  const router = useRouter();
 
-  // ============================================================
-  // FIX #2: Auto-dismiss covers 'canceled' status too
-  // Users with canceled subscription but remaining time still have access
-  // ============================================================
+  // Auto-dismiss paywall if user already has access
   useEffect(() => {
     if (hasAccess && (status === 'trialing' || status === 'active' || status === 'canceled')) {
       console.log('[TontineClub] PaywallView: subscription active, dismissing paywall');
       onTrialActivated();
     }
-    if (status === 'expired') {
-      setTrialExpired(true);
-    }
   }, [hasAccess, status]);
+
+  // Initialize Google Play Billing connection on native
+  useEffect(() => {
+    if (IAP_AVAILABLE) {
+      initIAP();
+    }
+    return () => {
+      if (IAP_AVAILABLE) {
+        endIAP();
+      }
+    };
+  }, []);
 
   const FEATURES = [
     { icon: 'wallet', title: t('paywall.feat1Title'), desc: t('paywall.feat1Desc') },
@@ -54,41 +61,63 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
     { icon: 'lock-closed', title: t('paywall.feat6Title'), desc: t('paywall.feat6Desc') },
   ];
 
-  const handleStartTrial = async () => {
+  // ============================================================
+  // GOOGLE PLAY BILLING: Subscribe via Google Play
+  // Google manages the 7-day trial and $1/month renewal
+  // ============================================================
+  const handleSubscribe = async () => {
     setLoading(true);
     setErrorMsg(null);
-    try {
-      const msg = await activateTrial();
-      setSuccessMsg(msg);
-      // activateTrial succeeded — subscription is now active
-      setTimeout(() => {
-        onTrialActivated();
-      }, 800);
-    } catch (e: any) {
-      // activateTrial already called fetchStatus() internally on error
-      // Check the REAL state from the store
-      const currentState = useSubscriptionStore.getState();
-      if (currentState.hasAccess) {
-        setSuccessMsg(t('paywall.trialAlreadyActive') || 'Votre essai gratuit est actif !');
-        setTimeout(() => {
-          onTrialActivated();
-        }, 800);
-        return;
+
+    if (!IAP_AVAILABLE) {
+      // Web / Expo Go: use backend API directly for testing
+      try {
+        const msg = await verifyPurchase('web_test_token', GOOGLE_PLAY_PRODUCT_ID);
+        setSuccessMsg(msg || t('paywall.subscriptionSuccess'));
+        setTimeout(() => onTrialActivated(), 800);
+      } catch (e: any) {
+        await fetchStatus();
+        const currentState = useSubscriptionStore.getState();
+        if (currentState.hasAccess) {
+          setSuccessMsg(t('paywall.subscriptionActive'));
+          setTimeout(() => onTrialActivated(), 800);
+        } else {
+          setErrorMsg(t('paywall.subscriptionWebNote'));
+        }
+      } finally {
+        setLoading(false);
       }
-      // Trial is truly unavailable (expired, already used, etc.)
-      const detail = e.response?.data?.detail || e.message || '';
-      if (detail.includes('déjà utilisé') || detail.includes('already used')) {
-        setErrorMsg("Votre essai gratuit a expiré. Veuillez souscrire un abonnement.");
-        setTrialExpired(true);
+      return;
+    }
+
+    // Native: Use Google Play Billing
+    try {
+      const result = await purchaseSubscription(GOOGLE_PLAY_PRODUCT_ID);
+
+      if (result && result.purchaseToken) {
+        // Verify purchase with backend
+        const msg = await verifyPurchase(result.purchaseToken, GOOGLE_PLAY_PRODUCT_ID);
+
+        // Acknowledge the purchase (required by Google)
+        await acknowledgeSubscription(result.purchaseToken);
+
+        setSuccessMsg(msg || t('paywall.subscriptionSuccess'));
+        setTimeout(() => onTrialActivated(), 800);
+      }
+    } catch (err: any) {
+      console.error('[TontineClub] Purchase error:', err);
+      if (err.code === 'E_USER_CANCELLED' || err.message === 'E_USER_CANCELLED') {
+        // User cancelled — not an error
+        setErrorMsg(null);
+      } else if (err.message === 'PRODUCT_NOT_FOUND') {
+        setErrorMsg(t('paywall.productNotFound'));
       } else {
-        setErrorMsg(detail || t('paywall.activationError'));
+        setErrorMsg(err.message || t('paywall.purchaseError'));
       }
     } finally {
       setLoading(false);
     }
   };
-
-  const router = useRouter();
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -97,7 +126,6 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
       return;
     }
     await logout();
-    router.replace('/');
   };
 
   return (
@@ -112,6 +140,7 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           />
         </View>
 
+        {/* Title — Sales-oriented, NOT blocking */}
         <Text style={styles.title}>{t('paywall.title')}</Text>
         <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
 
@@ -145,13 +174,15 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           </View>
         ))}
 
-        {/* Success / Error */}
+        {/* Success Message */}
         {successMsg && (
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text style={styles.successText}>{successMsg}</Text>
           </View>
         )}
+
+        {/* Error Message */}
         {errorMsg && (
           <View style={styles.errorBanner}>
             <Ionicons name="alert-circle" size={20} color="#DC2626" />
@@ -159,7 +190,7 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
           </View>
         )}
 
-        {/* CTA Button - Show "Continue" when trial is already active, "Start trial" otherwise */}
+        {/* CTA Button */}
         {(successMsg || hasAccess) ? (
           <TouchableOpacity
             style={[styles.ctaButton, { backgroundColor: '#059669' }]}
@@ -172,7 +203,7 @@ export default function PaywallView({ onTrialActivated }: PaywallProps) {
         ) : (
           <TouchableOpacity
             style={styles.ctaButton}
-            onPress={handleStartTrial}
+            onPress={handleSubscribe}
             disabled={loading}
             activeOpacity={0.8}
           >

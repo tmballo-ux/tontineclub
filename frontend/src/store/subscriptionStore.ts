@@ -6,6 +6,9 @@ import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+// Google Play Product ID — must match Google Play Console configuration
+export const GOOGLE_PLAY_PRODUCT_ID = 'tontine_premium_monthly';
+
 export type SubStatus = 'none' | 'trialing' | 'active' | 'canceled' | 'expired';
 
 export interface SubscriptionState {
@@ -17,20 +20,19 @@ export interface SubscriptionState {
   isLoading: boolean;
   isChecked: boolean;
   fetchStatus: () => Promise<void>;
-  activateTrial: () => Promise<string>;
+  verifyPurchase: (purchaseToken: string, productId: string) => Promise<string>;
   cancelSubscription: () => Promise<string>;
   reset: () => void;
 }
 
 // ============================================================
-// FIX #3: Robust token retrieval with SecureStore fallback
+// Robust token retrieval with SecureStore fallback
 // ============================================================
 const getAuthHeader = async () => {
   let token: string | null = null;
   if (Platform.OS === 'web') {
     token = await AsyncStorage.getItem('token');
   } else {
-    // Try SecureStore first, fall back to AsyncStorage
     try {
       token = await SecureStore.getItemAsync('token');
     } catch (e) {
@@ -54,7 +56,6 @@ const persistSubscription = async (data: { status: string; hasAccess: boolean; t
     try { await AsyncStorage.setItem('subscription', value); } catch (e) {}
     return;
   }
-  // Native: try SecureStore, fall back to AsyncStorage
   try {
     await SecureStore.setItemAsync('subscription', value);
   } catch (e) {
@@ -72,6 +73,10 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   isLoading: true,
   isChecked: false,
 
+  // ============================================================
+  // Fetch subscription status from backend
+  // Backend returns Google Play-synced status
+  // ============================================================
   fetchStatus: async () => {
     try {
       set({ isLoading: true });
@@ -112,54 +117,38 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       await persistSubscription(newState);
     } catch (error) {
       console.error('[TontineClub] Error fetching subscription:', error);
-      // On error, keep existing hasAccess — don't reset to false
       set({ isLoading: false, isChecked: true });
     }
   },
 
-  activateTrial: async () => {
+  // ============================================================
+  // Verify Google Play purchase with backend
+  // Called after successful Google Play purchase
+  // ============================================================
+  verifyPurchase: async (purchaseToken: string, productId: string) => {
     const headers = await getAuthHeader();
     try {
-      const res = await axios.post(`${API_URL}/api/subscription/activate-trial`, {}, { headers });
+      const res = await axios.post(`${API_URL}/api/subscription/verify-purchase`, {
+        purchase_token: purchaseToken,
+        product_id: productId,
+      }, { headers });
+
       const newState = {
-        status: 'trialing' as SubStatus,
+        status: 'active' as SubStatus,
         hasAccess: true,
-        trialEnd: res.data.trial_end,
-        subscriptionEnd: null,
-        plan: 'tontine_premium_monthly',
+        trialEnd: null,
+        subscriptionEnd: res.data.subscription_end,
+        plan: productId,
       };
       set({ ...newState, isLoading: false, isChecked: true });
       await persistSubscription(newState);
       return res.data.message;
     } catch (error: any) {
-      // On ANY error, fetch the REAL status from the server
-      // Do NOT blindly set hasAccess=true
-      console.log('[TontineClub] activateTrial error, fetching real status...');
+      console.error('[TontineClub] Purchase verification failed:', error);
+      // Fetch real status as fallback
       try {
-        const statusHeaders = await getAuthHeader();
-        const statusRes = await axios.get(`${API_URL}/api/subscription/status`, {
-          headers: statusHeaders,
-          timeout: 10000,
-        });
-        const data = statusRes.data;
-        const realState = {
-          status: data.status as SubStatus,
-          hasAccess: data.has_access === true,
-          trialEnd: data.trial_end,
-          subscriptionEnd: data.subscription_end,
-          plan: data.plan,
-        };
-        set({ ...realState, isLoading: false, isChecked: true });
-        await persistSubscription(realState);
-
-        if (realState.hasAccess) {
-          return "Votre essai gratuit est déjà actif !";
-        }
-      } catch (fetchErr) {
-        console.error('[TontineClub] Failed to fetch real status:', fetchErr);
-      }
-
-      console.error('[TontineClub] Trial activation failed:', error.response?.data || error.message);
+        await get().fetchStatus();
+      } catch (e) {}
       throw error;
     }
   },

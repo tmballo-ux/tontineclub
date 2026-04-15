@@ -13,6 +13,12 @@
 - Role: user
 - Access: Standard user with trial activated
 
+## Paywall Test User
+- Email: `paywall_demo@test.com`
+- Password: `Demo1234!`
+- Role: user
+- Subscription: trialing (set to expired in DB to test paywall)
+
 ## Gmail SMTP (Email Sending)
 - Email: `nmamadou222@gmail.com`
 - App Password: `REDACTED_GMAIL_APP_PASSWORD`

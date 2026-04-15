@@ -311,13 +311,13 @@ export const fr = {
 
   // Paywall
   paywall: {
-    title: 'Essayez gratuitement\npendant 7 jours',
-    subtitle: 'Accédez à toutes les fonctionnalités pour gérer vos tontines en toute sécurité et transparence.',
+    title: 'Accédez à toutes les\nfonctionnalités Premium',
+    subtitle: 'Gérez vos tontines en toute sécurité avec TontineClub Premium. Essai gratuit de 7 jours inclus.',
     bestOffer: 'MEILLEURE OFFRE',
     premiumName: 'TontineClub Premium',
-    priceAmount: '3 $',
+    priceAmount: '1 $',
     pricePeriod: ' USD / mois',
-    trialOffer: '7 jours gratuits, puis 3 USD / mois',
+    trialOffer: '7 jours gratuits, puis 1 USD / mois',
     allIncluded: 'Tout inclus avec Premium',
     feat1Title: 'Gestion illimitée',
     feat1Desc: 'Créez et gérez autant de tontines que vous voulez',
@@ -332,9 +332,15 @@ export const fr = {
     feat6Title: 'Sécurité renforcée',
     feat6Desc: 'Données chiffrées et accès protégé',
     startTrial: "Commencer l'essai gratuit",
-    legalText: "Après les 7 jours d'essai, l'abonnement sera automatiquement renouvelé à 3 USD / mois. Vous pouvez annuler à tout moment via Google Play. Aucun paiement ne sera prélevé pendant la période d'essai.",
+    continueButton: 'Accéder au tableau de bord',
+    legalText: "Essai gratuit de 7 jours. Après la période d'essai, l'abonnement sera automatiquement renouvelé à 1 USD / mois. Vous pouvez annuler à tout moment via Google Play. Aucun paiement ne sera prélevé pendant la période d'essai.",
     logoutLink: 'Se déconnecter',
     activationError: "Erreur lors de l'activation",
+    subscriptionSuccess: 'Abonnement activé avec succès !',
+    subscriptionActive: 'Votre abonnement est actif !',
+    subscriptionWebNote: "L'abonnement Google Play n'est disponible que sur l'application mobile.",
+    productNotFound: 'Produit non disponible. Veuillez réessayer.',
+    purchaseError: "Erreur lors de l'achat. Veuillez réessayer.",
   },
 
   // Help Center
@@ -357,7 +363,7 @@ export const fr = {
     q7: "L'application est-elle sécurisée ?",
     a7: 'Oui, vos données sont protégées par chiffrement. Les mots de passe sont hashés, les communications sont sécurisées (HTTPS), et l\'authentification se fait par jeton JWT. Vos données ne sont jamais vendues à des tiers.',
     q8: "Comment fonctionne l'essai gratuit ?",
-    a8: "À la création de votre compte, vous bénéficiez de 7 jours d'essai gratuit pour accéder à toutes les fonctionnalités Premium. Après cette période, l'abonnement est de 3 USD / mois, annulable à tout moment via Google Play.",
+    a8: "À la création de votre compte, vous bénéficiez de 7 jours d'essai gratuit pour accéder à toutes les fonctionnalités Premium. Après cette période, l'abonnement est de 1 USD / mois, annulable à tout moment via Google Play.",
     q9: 'Comment annuler mon abonnement ?',
     a9: "Vous pouvez annuler votre abonnement à tout moment depuis votre Profil (section Abonnement) ou directement via Google Play Store. Vous conserverez l'accès jusqu'à la fin de votre période en cours.",
     noAnswer: 'Vous ne trouvez pas votre réponse ?',

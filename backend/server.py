@@ -345,10 +345,12 @@ async def create_notification(user_id: str, notif_type: NotificationType, title:
 
 # Subscription constants (used in register + subscription endpoints)
 TRIAL_DURATION_DAYS = 7
-SUBSCRIPTION_PRICE_USD = 3.00
+SUBSCRIPTION_PRICE_USD = 1.00
 
 # Helper: get subscription status for a user (SINGLE source of truth for ALL endpoints)
-# FIX #5: Both login response AND /subscription/status use this SAME function
+# IMPORTANT: Google Play manages trials and renewals.
+# The backend should NOT block users based on internal trial dates.
+# It only stores the subscription state received from Google Play verification.
 # FIX #2: Handle 'canceled' status — if remaining time, user still has access
 async def get_subscription_data(user_id: str) -> dict:
     sub = await db.subscriptions.find_one({"user_id": user_id})
@@ -362,43 +364,32 @@ async def get_subscription_data(user_id: str) -> dict:
     if hasattr(current_status, 'value'):
         current_status = current_status.value
     
-    now = datetime.utcnow()
-    
-    if current_status == "trialing":
-        trial_end = sub.get("trial_end")
-        if trial_end and now < trial_end:
-            has_access = True
-        else:
-            has_access = False
-            current_status = "expired"
-            # Update DB so activate-trial doesn't get confused
-            await db.subscriptions.update_one(
-                {"user_id": user_id},
-                {"$set": {"status": SubscriptionStatus.EXPIRED}}
-            )
-    elif current_status == "active":
-        sub_end = sub.get("subscription_end")
-        if sub_end and now > sub_end:
-            has_access = False
-            current_status = "expired"
-            await db.subscriptions.update_one(
-                {"user_id": user_id},
-                {"$set": {"status": SubscriptionStatus.EXPIRED}}
-            )
-        else:
-            has_access = True
+    # ============================================================
+    # GOOGLE PLAY BILLING: Google manages trials and renewals.
+    # The app does NOT block users based on internal trial dates.
+    # has_access is determined by the subscription status stored
+    # after Google Play purchase verification.
+    # ============================================================
+    if current_status in ("trialing", "active"):
+        has_access = True
     elif current_status == "canceled":
-        # FIX #2: Canceled but still has remaining time = still has access
+        # Canceled but Google may still give access until end of period
         end_date = sub.get("subscription_end") or sub.get("trial_end")
-        if end_date and now < end_date:
-            has_access = True
+        if end_date:
+            now = datetime.utcnow()
+            if now < end_date:
+                has_access = True
+            else:
+                has_access = False
+                current_status = "expired"
+                await db.subscriptions.update_one(
+                    {"user_id": user_id},
+                    {"$set": {"status": SubscriptionStatus.EXPIRED}}
+                )
         else:
-            has_access = False
-            current_status = "expired"
-            await db.subscriptions.update_one(
-                {"user_id": user_id},
-                {"$set": {"status": SubscriptionStatus.EXPIRED}}
-            )
+            has_access = True  # If no end date, let Google be the authority
+    elif current_status == "expired":
+        has_access = False
     
     return {
         "status": current_status,

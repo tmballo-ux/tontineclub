@@ -102,7 +102,7 @@ export default function PaywallScreen() {
           </View>
           <View style={styles.trialRow}>
             <Ionicons name="gift" size={16} color="#059669" />
-            <Text style={styles.trialText}>7 jours gratuits, puis 3 USD / mois</Text>
+            <Text style={styles.trialText}>7 jours gratuits, puis 1 USD / mois</Text>
           </View>
         </LinearGradient>
 
@@ -153,7 +153,7 @@ export default function PaywallScreen() {
 
         {/* Legal Text */}
         <Text style={styles.legalText}>
-          Après les 7 jours d'essai, l'abonnement sera automatiquement renouvelé à 3 USD / mois. Vous pouvez annuler à tout moment via Google Play. Aucun paiement ne sera prélevé pendant la période d'essai.
+          Essai gratuit de 7 jours. Après la période d'essai, l'abonnement sera automatiquement renouvelé à 1 USD / mois. Vous pouvez annuler à tout moment via Google Play. Aucun paiement ne sera prélevé pendant la période d'essai.
         </Text>
 
         {/* Logout */}
