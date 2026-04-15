@@ -331,6 +331,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token invalide")
 
+# ============================================================
+# DEMO PROTECTION: Prevent demo accounts from modifying data
+# ============================================================
+def check_demo_readonly(user: dict):
+    """Raise 403 if user is a demo account trying to modify data"""
+    if user.get("is_demo", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Les comptes de démonstration sont en lecture seule. Créez votre propre compte pour utiliser cette fonctionnalité."
+        )
+
 async def create_notification(user_id: str, notif_type: NotificationType, title: str, message: str, tontine_id: str = None, metadata: dict = None):
     notification = Notification(
         user_id=user_id,
@@ -626,6 +637,7 @@ async def change_password(data: dict = Body(...), current_user: dict = Depends(g
 
 @api_router.post("/tontines", response_model=Tontine)
 async def create_tontine(tontine_data: TontineCreate, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     tontine = Tontine(
         name=tontine_data.name,
         contribution_amount=tontine_data.contribution_amount,
@@ -744,6 +756,7 @@ async def get_tontine(tontine_id: str, current_user: dict = Depends(get_current_
 
 @api_router.put("/tontines/{tontine_id}", response_model=Tontine)
 async def update_tontine(tontine_id: str, update_data: TontineUpdate, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     tontine = await db.tontines.find_one({"id": tontine_id})
     if not tontine:
         raise HTTPException(status_code=404, detail="Tontine non trouvée")
@@ -760,6 +773,7 @@ async def update_tontine(tontine_id: str, update_data: TontineUpdate, current_us
 
 @api_router.delete("/tontines/{tontine_id}")
 async def delete_tontine(tontine_id: str, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     tontine = await db.tontines.find_one({"id": tontine_id})
     if not tontine:
         raise HTTPException(status_code=404, detail="Tontine non trouvée")
@@ -1071,6 +1085,7 @@ async def randomize_beneficiary_order(tontine_id: str, current_user: dict = Depe
 
 @api_router.post("/tontines/{tontine_id}/start")
 async def start_tontine(tontine_id: str, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     tontine = await db.tontines.find_one({"id": tontine_id})
     if not tontine:
         raise HTTPException(status_code=404, detail="Tontine non trouvée")
@@ -1161,6 +1176,7 @@ async def get_current_cycle(tontine_id: str, current_user: dict = Depends(get_cu
 
 @api_router.post("/contributions/declare")
 async def declare_payment(request: DeclarePaymentRequest, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     contribution = await db.contributions.find_one({
         "cycle_id": request.cycle_id,
         "member_id": current_user["id"]
@@ -1193,6 +1209,7 @@ async def declare_payment(request: DeclarePaymentRequest, current_user: dict = D
 
 @api_router.post("/contributions/confirm")
 async def confirm_payment(request: ConfirmPaymentRequest, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     contribution = await db.contributions.find_one({"id": request.declaration_id})
     if not contribution:
         raise HTTPException(status_code=404, detail="Cotisation non trouvée")
@@ -1247,6 +1264,7 @@ async def confirm_payment(request: ConfirmPaymentRequest, current_user: dict = D
 
 @api_router.post("/contributions/contest")
 async def contest_payment(request: ContestPaymentRequest, current_user: dict = Depends(get_current_user)):
+    check_demo_readonly(current_user)
     contribution = await db.contributions.find_one({"id": request.declaration_id})
     if not contribution:
         raise HTTPException(status_code=404, detail="Cotisation non trouvée")
