@@ -461,6 +461,7 @@ export const fr = {
     closedGroupWarning: "Invitez tous vos membres avant de démarrer : une fois la tontine lancée, le groupe est fermé jusqu'à la fin complète du cycle. Il ne sera plus possible d'ajouter de nouveaux membres normalement.",
     noPaymentsYet: 'Aucun paiement encore',
     paid: 'payé(s)',
+    manualOrderHint: "Utilisez les flèches ↑↓ pour définir manuellement l'ordre de passage, ou le tirage au sort pour un ordre aléatoire.",
     startConfirmText: 'Êtes-vous sûr de vouloir démarrer cette tontine ? Les cycles seront générés automatiquement.',
     randomDraw: 'Tirage aléatoire',
     randomConfirmText: 'Voulez-vous générer un ordre aléatoire pour les bénéficiaires ?',

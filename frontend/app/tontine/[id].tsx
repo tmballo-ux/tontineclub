@@ -61,6 +61,21 @@ export default function TontineDetailScreen() {
   const [contestReason, setContestReason] = useState('');
   const [contestingId, setContestingId] = useState<string | null>(null);
 
+  const handleMoveMember = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= members.length) return;
+
+    const reordered = [...members];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    const memberIds = reordered.map((m) => m.id);
+
+    try {
+      await setBeneficiaryOrder(id!, memberIds);
+    } catch (error: any) {
+      Alert.alert(t('create.error'), error.message);
+    }
+  };
+
   const loadData = useCallback(async () => {
     if (!id) return;
     await Promise.all([
@@ -331,6 +346,12 @@ export default function TontineDetailScreen() {
         {activeTab === 'members' && (
           <>
             {isCreator && currentTontine.status === 'draft' && (
+              <View style={styles.warningBox}>
+                <Ionicons name="information-circle" size={18} color={colors.warning} />
+                <Text style={styles.warningText}>{t('detail.manualOrderHint')}</Text>
+              </View>
+            )}
+            {isCreator && currentTontine.status === 'draft' && (
               <View style={styles.orderActions}>
                 <Button
                   title={t('detail.randomDraw')}
@@ -380,6 +401,28 @@ export default function TontineDetailScreen() {
                     {member.user_id === currentTontine.creator_id && (
                       <View style={styles.creatorBadge}>
                         <Text style={styles.creatorText}>{t('detail.creator')}</Text>
+                      </View>
+                    )}
+                    {isCreator && currentTontine.status === 'draft' && (
+                      <View style={styles.reorderArrows}>
+                        <TouchableOpacity
+                          onPress={() => handleMoveMember(index, 'up')}
+                          disabled={index === 0}
+                          style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
+                        >
+                          <Ionicons name="chevron-up" size={18} color={index === 0 ? colors.textLight : colors.primary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleMoveMember(index, 'down')}
+                          disabled={index === members.length - 1}
+                          style={[styles.reorderBtn, index === members.length - 1 && styles.reorderBtnDisabled]}
+                        >
+                          <Ionicons
+                            name="chevron-down"
+                            size={18}
+                            color={index === members.length - 1 ? colors.textLight : colors.primary}
+                          />
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
@@ -943,6 +986,15 @@ const styles = StyleSheet.create({
   },
   paymentBadgeDanger: {
     backgroundColor: '#FEE2E2',
+  },
+  reorderArrows: {
+    marginLeft: 8,
+  },
+  reorderBtn: {
+    padding: 2,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.3,
   },
   orderActions: {
     flexDirection: 'row',
