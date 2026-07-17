@@ -33,10 +33,12 @@ export default function TontineDetailScreen() {
     currentTontine,
     members,
     cycles,
+    contributions,
     fetchTontine,
     fetchMembers,
     fetchCycles,
     fetchCurrentCycle,
+    fetchContributions,
     startTontine,
     sendInvitation,
     declarePayment,
@@ -65,6 +67,7 @@ export default function TontineDetailScreen() {
       fetchTontine(id),
       fetchMembers(id),
       fetchCycles(id),
+      fetchContributions(id),
     ]);
     const cycleData = await fetchCurrentCycle(id);
     setCurrentCycleData(cycleData);
@@ -344,24 +347,67 @@ export default function TontineDetailScreen() {
                 />
               </View>
             )}
-            {members.map((member, index) => (
-              <Card key={member.id} style={styles.memberCard}>
-                <View style={styles.memberRow}>
-                  <View style={styles.orderBadge}>
-                    <Text style={styles.orderNumber}>{member.beneficiary_order || index + 1}</Text>
+            {members.map((member, index) => {
+              const memberContribs = contributions.filter((c) => c.member_id === member.user_id);
+              const confirmedCount = memberContribs.filter((c) => c.status === 'confirmed').length;
+              const totalCount = memberContribs.length;
+              const hasPending = memberContribs.some((c) => c.status === 'announced');
+              const hasContested = memberContribs.some((c) => c.status === 'contested');
+
+              let paymentBadgeStyle = styles.paymentBadgeNeutral;
+              let paymentBadgeText = t('detail.noPaymentsYet');
+              if (totalCount > 0) {
+                paymentBadgeText = `${confirmedCount}/${totalCount} ${t('detail.paid')}`;
+                if (hasContested) {
+                  paymentBadgeStyle = styles.paymentBadgeDanger;
+                } else if (confirmedCount === totalCount) {
+                  paymentBadgeStyle = styles.paymentBadgeSuccess;
+                } else if (hasPending) {
+                  paymentBadgeStyle = styles.paymentBadgeWarning;
+                }
+              }
+
+              return (
+                <Card key={member.id} style={styles.memberCard}>
+                  <View style={styles.memberRow}>
+                    <View style={styles.orderBadge}>
+                      <Text style={styles.orderNumber}>{member.beneficiary_order || index + 1}</Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{member.user_name}</Text>
+                      <Text style={styles.memberEmail}>{member.user_email}</Text>
+                    </View>
+                    {member.user_id === currentTontine.creator_id && (
+                      <View style={styles.creatorBadge}>
+                        <Text style={styles.creatorText}>{t('detail.creator')}</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{member.user_name}</Text>
-                    <Text style={styles.memberEmail}>{member.user_email}</Text>
-                  </View>
-                  {member.user_id === currentTontine.creator_id && (
-                    <View style={styles.creatorBadge}>
-                      <Text style={styles.creatorText}>{t('detail.creator')}</Text>
+                  {currentTontine.status !== 'draft' && (
+                    <View style={[styles.paymentBadge, paymentBadgeStyle]}>
+                      <Ionicons
+                        name={
+                          hasContested
+                            ? 'alert-circle'
+                            : totalCount > 0 && confirmedCount === totalCount
+                            ? 'checkmark-circle'
+                            : 'time-outline'
+                        }
+                        size={14}
+                        color={
+                          hasContested
+                            ? '#DC2626'
+                            : totalCount > 0 && confirmedCount === totalCount
+                            ? '#059669'
+                            : '#6B7280'
+                        }
+                      />
+                      <Text style={styles.paymentBadgeText}>{paymentBadgeText}</Text>
                     </View>
                   )}
-                </View>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </>
         )}
 
@@ -871,6 +917,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#92400E',
     lineHeight: 18,
+  },
+  paymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  paymentBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  paymentBadgeNeutral: {
+    backgroundColor: '#F3F4F6',
+  },
+  paymentBadgeSuccess: {
+    backgroundColor: '#D1FAE5',
+  },
+  paymentBadgeWarning: {
+    backgroundColor: '#FEF3C7',
+  },
+  paymentBadgeDanger: {
+    backgroundColor: '#FEE2E2',
   },
   orderActions: {
     flexDirection: 'row',

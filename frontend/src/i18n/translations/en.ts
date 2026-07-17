@@ -433,6 +433,8 @@ export const en: TranslationKeys = {
     inviteMember: 'Invite a member',
     startTontine: 'Start tontine',
     closedGroupWarning: 'Invite all your members before starting: once the tontine begins, the group is closed until the full cycle ends. New members can no longer be added normally.',
+    noPaymentsYet: 'No payments yet',
+    paid: 'paid',
     startConfirmText: 'Are you sure you want to start this tontine? Cycles will be generated automatically.',
     randomDraw: 'Random draw',
     randomConfirmText: 'Do you want to generate a random order for beneficiaries?',

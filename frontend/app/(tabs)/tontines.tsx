@@ -348,7 +348,9 @@ function TontineCard({ tontine, onPress, onAction }: TontineCardProps) {
             <View>
               <Text style={styles.infoLabel}>{t('tontines.deadline')}</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
-                {formatDate(tontine.next_payment_date) || t('tontines.notDefined')}
+                {tontine.status === 'completed'
+                  ? t('tontines.filterCompleted')
+                  : formatDate(tontine.next_payment_date) || t('tontines.notDefined')}
               </Text>
             </View>
           </View>

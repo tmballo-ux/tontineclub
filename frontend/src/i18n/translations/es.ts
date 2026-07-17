@@ -409,6 +409,8 @@ export const es: TranslationKeys = {
     inviteMember: 'Invitar un miembro',
     startTontine: 'Iniciar tontina',
     closedGroupWarning: 'Invita a todos tus miembros antes de comenzar: una vez que la tontina se inicia, el grupo queda cerrado hasta el final completo del ciclo. Ya no se podrán añadir nuevos miembros normalmente.',
+    noPaymentsYet: 'Sin pagos aún',
+    paid: 'pagado(s)',
     startConfirmText: '¿Estás seguro de que quieres iniciar esta tontina? Los ciclos se generarán automáticamente.',
     randomDraw: 'Sorteo aleatorio',
     randomConfirmText: '¿Quieres generar un orden aleatorio para los beneficiarios?',

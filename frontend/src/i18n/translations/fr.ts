@@ -459,6 +459,8 @@ export const fr = {
     inviteMember: 'Inviter un membre',
     startTontine: 'Démarrer la tontine',
     closedGroupWarning: "Invitez tous vos membres avant de démarrer : une fois la tontine lancée, le groupe est fermé jusqu'à la fin complète du cycle. Il ne sera plus possible d'ajouter de nouveaux membres normalement.",
+    noPaymentsYet: 'Aucun paiement encore',
+    paid: 'payé(s)',
     startConfirmText: 'Êtes-vous sûr de vouloir démarrer cette tontine ? Les cycles seront générés automatiquement.',
     randomDraw: 'Tirage aléatoire',
     randomConfirmText: 'Voulez-vous générer un ordre aléatoire pour les bénéficiaires ?',
