@@ -488,7 +488,6 @@ function getQuickActions(status: string, isCreator: boolean, t: (key: string) =>
       return [
         { key: 'pay', label: t('tontines.pay'), icon: 'card-outline' },
         { key: 'details', label: t('tontines.details'), icon: 'eye-outline' },
-        { key: 'invite', label: t('tontines.invite'), icon: 'person-add-outline' },
       ];
     case 'completed':
       return [

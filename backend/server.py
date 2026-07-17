@@ -801,6 +801,12 @@ async def send_invitation(invitation_data: InvitationCreate, current_user: dict 
     if tontine["creator_id"] != current_user["id"]:
         raise HTTPException(status_code=403, detail="Seul le créateur peut envoyer des invitations")
     
+    if tontine["status"] != TontineStatus.DRAFT:
+        raise HTTPException(
+            status_code=400,
+            detail="Cette tontine est déjà démarrée. Le groupe est fermé jusqu'à la fin du cycle en cours."
+        )
+    
     if tontine["current_members"] >= tontine["max_members"]:
         raise HTTPException(status_code=400, detail="La tontine a atteint le nombre maximum de membres")
     
@@ -959,6 +965,12 @@ async def accept_invitation(invitation_id: str, current_user: dict = Depends(get
     
     if tontine["current_members"] >= tontine["max_members"]:
         raise HTTPException(status_code=400, detail="La tontine est complète")
+    
+    if tontine["status"] != TontineStatus.DRAFT:
+        raise HTTPException(
+            status_code=400,
+            detail="Cette tontine a démarré entre-temps. Le groupe est maintenant fermé. Contactez le créateur."
+        )
     
     # Update invitation
     await db.invitations.update_one(

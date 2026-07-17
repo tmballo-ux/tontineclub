@@ -301,6 +301,12 @@ export default function TontineDetailScreen() {
             {/* Actions */}
             {isCreator && currentTontine.status === 'draft' && (
               <View style={styles.actions}>
+                <View style={styles.warningBox}>
+                  <Ionicons name="information-circle" size={18} color={colors.warning} />
+                  <Text style={styles.warningText}>
+                    {t('detail.closedGroupWarning')}
+                  </Text>
+                </View>
                 <Button
                   title={t('detail.inviteMember')}
                   onPress={() => setShowInviteModal(true)}
@@ -851,6 +857,20 @@ const styles = StyleSheet.create({
   actions: {
     gap: 12,
     marginTop: 8,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
   },
   orderActions: {
     flexDirection: 'row',
