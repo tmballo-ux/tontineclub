@@ -1001,9 +1001,11 @@ async def accept_invitation(invitation_id: str, current_user: dict = Depends(get
     new_count = member_count + 1
     update_data = {"current_members": new_count}
     
-    # Auto-activate if full
-    if new_count >= tontine["max_members"]:
-        update_data["status"] = TontineStatus.ACTIVE
+    # NOTE: pas d'auto-activation ici. Le statut ne doit passer a ACTIVE
+    # que via l'endpoint /start, qui genere aussi les cycles. Sinon on
+    # se retrouve avec une tontine "active" sans aucun cycle genere
+    # (etat incoherent). Meme si le groupe est complet, c'est au
+    # createur de demarrer explicitement.
     
     await db.tontines.update_one({"id": invitation["tontine_id"]}, {"$set": update_data})
     
@@ -1016,6 +1018,16 @@ async def accept_invitation(invitation_id: str, current_user: dict = Depends(get
         tontine_id=tontine["id"],
         metadata={"user_name": current_user["full_name"], "tontine_name": tontine["name"]}
     )
+    
+    if new_count >= tontine["max_members"]:
+        await create_notification(
+            user_id=tontine["creator_id"],
+            notif_type=NotificationType.INVITATION_ACCEPTED,
+            title="Groupe complet",
+            message=f"'{tontine['name']}' a atteint son nombre maximum de membres. Vous pouvez maintenant la démarrer.",
+            tontine_id=tontine["id"],
+            metadata={"tontine_name": tontine["name"]}
+        )
     
     return {"message": "Invitation acceptée avec succès"}
 
