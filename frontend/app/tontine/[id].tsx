@@ -589,7 +589,7 @@ export default function TontineDetailScreen() {
                         </View>
                       )}
 
-                      {/* Action Buttons for Beneficiary */}
+                      {/* Action Buttons for Beneficiary: confirmer/contester les autres membres */}
                       {isBeneficiary && contribution.status === 'announced' && contribution.member_id !== user?.id && (
                         <View style={styles.paymentActionRow}>
                           <TouchableOpacity
@@ -612,8 +612,21 @@ export default function TontineDetailScreen() {
                         </View>
                       )}
 
-                      {/* Declare button for current user */}
-                      {contribution.member_id === user?.id && contribution.status === 'not_announced' && !isBeneficiaryContrib && (
+                      {/* Action Button for Beneficiary: auto-confirmer sa propre contribution (pas de "contester" sur soi-meme) */}
+                      {isBeneficiary && contribution.status === 'announced' && contribution.member_id === user?.id && (
+                        <View style={styles.paymentActionRow}>
+                          <TouchableOpacity
+                            style={styles.confirmActionBtn}
+                            onPress={() => handleConfirmPayment(contribution.id)}
+                          >
+                            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                            <Text style={styles.actionBtnText}>{t('detail.confirm')}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {/* Declare button for current user (le beneficiaire doit aussi payer/declarer) */}
+                      {contribution.member_id === user?.id && contribution.status === 'not_announced' && (
                         <TouchableOpacity
                           style={styles.declareActionBtn}
                           onPress={handleDeclarePayment}
