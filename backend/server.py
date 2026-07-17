@@ -689,15 +689,23 @@ async def get_my_tontines_enriched(current_user: dict = Depends(get_current_user
         # User position
         user_position = member.get("beneficiary_order", 0) if member else 0
         
-        # Total pot
-        total_pot = t["contribution_amount"] * t["max_members"]
+        # Total pot per cycle: base sur les membres reels une fois demarree
+        # (le groupe est ferme apres demarrage, donc max_members n'est plus
+        # forcement atteint - on ne veut pas afficher un objectif fictif)
+        if t["status"] == TontineStatus.DRAFT:
+            total_pot = t["contribution_amount"] * t["max_members"]
+        else:
+            total_pot = t["contribution_amount"] * t["current_members"]
         
         # Is creator
         is_creator = t["creator_id"] == current_user["id"]
         
         # Cycle info
         all_cycles = await db.cycles.find({"tontine_id": tid}).to_list(1000)
-        total_cycles = t["max_members"]  # one cycle per member
+        # Une fois les cycles generes (tontine demarree), leur nombre est fige
+        # au nombre de membres presents au demarrage (groupe ferme). Avant
+        # demarrage, on affiche l'objectif max_members comme estimation.
+        total_cycles = len(all_cycles) if all_cycles else t["max_members"]
         cycles_completed = sum(1 for c in all_cycles if c.get("is_completed", False))
         
         current_cycle = None
@@ -1269,6 +1277,18 @@ async def confirm_payment(request: ConfirmPaymentRequest, current_user: dict = D
                     notif_type=NotificationType.CYCLE_STARTED,
                     title="Nouveau cycle",
                     message=f"Le cycle {next_cycle['cycle_number']} de '{tontine['name']}' commence! Bénéficiaire: {next_cycle['beneficiary_name']}",
+                    tontine_id=cycle["tontine_id"]
+                )
+        else:
+            # Pas de cycle suivant: c'etait le dernier -> la tontine est terminee
+            await db.tontines.update_one({"id": cycle["tontine_id"]}, {"$set": {"status": TontineStatus.COMPLETED}})
+            members = await db.tontine_members.find({"tontine_id": cycle["tontine_id"]}).to_list(1000)
+            for m in members:
+                await create_notification(
+                    user_id=m["user_id"],
+                    notif_type=NotificationType.CYCLE_STARTED,
+                    title="Tontine terminée",
+                    message=f"'{tontine['name']}' est terminée ! Tous les cycles ont ete completes avec succes.",
                     tontine_id=cycle["tontine_id"]
                 )
     
