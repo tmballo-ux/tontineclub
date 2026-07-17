@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
@@ -19,6 +20,7 @@ import { Button } from '@/src/components/Button';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/');
   const { login } = useAuthStore();
   const { t } = useTranslation();
 
@@ -67,7 +69,7 @@ export default function LoginScreen() {
         >
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => goBack()}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>

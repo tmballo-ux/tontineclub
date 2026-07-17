@@ -8,17 +8,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 
 export default function TermsScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/profile');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => goBack()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Conditions d'utilisation</Text>

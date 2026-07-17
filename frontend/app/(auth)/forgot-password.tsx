@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { colors } from '@/src/theme/colors';
@@ -20,6 +21,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(auth)/login');
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,7 +66,7 @@ export default function ForgotPasswordScreen() {
         <View style={styles.content}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => goBack()}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>

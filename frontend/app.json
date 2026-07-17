@@ -61,8 +61,7 @@
           "photosPermission": "Choisir votre photo de profil",
           "cameraPermission": "Prendre votre photo de profil"
         }
-      ],
-      "react-native-iap"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

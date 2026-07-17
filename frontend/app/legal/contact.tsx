@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
@@ -19,6 +20,7 @@ const SUPPORT_EMAIL = 't.mballo@gmail.com';
 
 export default function ContactScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/profile');
   const { t } = useTranslation();
 
   const handleOpenMail = async () => {
@@ -50,7 +52,7 @@ export default function ContactScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 

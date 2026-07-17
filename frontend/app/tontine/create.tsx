@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTontineStore, Currency } from '@/src/store/tontineStore';
 import { useAuthStore } from '@/src/store/authStore';
@@ -44,6 +45,7 @@ const formatCurrencyAmount = (amount: number, currency: Currency) => {
 
 export default function CreateTontineScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/tontines');
   const { createTontine } = useTontineStore();
   const { isAuthenticated, token } = useAuthStore();
   const { t } = useTranslation();
@@ -120,7 +122,7 @@ export default function CreateTontineScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('create.title')}</Text>

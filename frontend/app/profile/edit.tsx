@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTranslation } from '@/src/i18n';
@@ -21,6 +22,7 @@ import { Card } from '@/src/components/Card';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/profile');
   const { user, updateProfile } = useAuthStore();
   const { t } = useTranslation();
 
@@ -47,7 +49,7 @@ export default function EditProfileScreen() {
         phone: phone.trim(),
       });
       Alert.alert(t('common.success'), t('profile.profileUpdated'));
-      router.back();
+      goBack();
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message);
     } finally {
@@ -62,7 +64,7 @@ export default function EditProfileScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('profile.editProfileTitle')}</Text>

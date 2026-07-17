@@ -8,12 +8,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 
 export default function HelpScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/profile');
   const { t } = useTranslation();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -22,7 +24,7 @@ export default function HelpScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 

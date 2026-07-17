@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useSafeGoBack } from '@/src/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useAuthStore } from '@/src/store/authStore';
@@ -24,6 +25,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/profile');
   const { token } = useAuthStore();
   const { t } = useTranslation();
 
@@ -56,7 +58,7 @@ export default function ChangePasswordScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       Alert.alert(t('common.success'), t('profile.passwordChanged'));
-      router.back();
+      goBack();
     } catch (error: any) {
       const detail = error.response?.data?.detail;
       if (detail) {
@@ -78,7 +80,7 @@ export default function ChangePasswordScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('profile.changePasswordTitle')}</Text>

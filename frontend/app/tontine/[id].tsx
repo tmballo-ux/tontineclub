@@ -20,9 +20,12 @@ import { colors, shadows } from '@/src/theme/colors';
 import { Card } from '@/src/components/Card';
 import { Button } from '@/src/components/Button';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import { confirmAction } from '@/src/utils/confirm';
+import { useSafeGoBack } from '@/src/utils/navigation';
 
 export default function TontineDetailScreen() {
   const router = useRouter();
+  const goBack = useSafeGoBack('/(tabs)/tontines');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuthStore();
   const { t } = useTranslation();
@@ -116,24 +119,20 @@ export default function TontineDetailScreen() {
   };
 
   const handleStartTontine = () => {
-    Alert.alert(
+    confirmAction(
       t('detail.startTontine'),
       t('detail.startConfirmText'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('detail.start'),
-          onPress: async () => {
-            try {
-              await startTontine(id!);
-              Alert.alert(t('common.success'), t('detail.tontineStarted'));
-              loadData();
-            } catch (error: any) {
-              Alert.alert(t('create.error'), error.message);
-            }
-          },
-        },
-      ]
+      t('detail.start'),
+      t('common.cancel'),
+      async () => {
+        try {
+          await startTontine(id!);
+          Alert.alert(t('common.success'), t('detail.tontineStarted'));
+          loadData();
+        } catch (error: any) {
+          Alert.alert(t('create.error'), error.message);
+        }
+      }
     );
   };
 
@@ -176,24 +175,20 @@ export default function TontineDetailScreen() {
   };
 
   const handleRandomizeOrder = () => {
-    Alert.alert(
+    confirmAction(
       t('detail.randomDraw'),
       t('detail.randomConfirmText'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('detail.generate'),
-          onPress: async () => {
-            try {
-              await randomizeBeneficiaryOrder(id!);
-              Alert.alert(t('common.success'), t('detail.orderGenerated'));
-              loadData();
-            } catch (error: any) {
-              Alert.alert(t('create.error'), error.message);
-            }
-          },
-        },
-      ]
+      t('detail.generate'),
+      t('common.cancel'),
+      async () => {
+        try {
+          await randomizeBeneficiaryOrder(id!);
+          Alert.alert(t('common.success'), t('detail.orderGenerated'));
+          loadData();
+        } catch (error: any) {
+          Alert.alert(t('create.error'), error.message);
+        }
+      }
     );
   };
 
@@ -215,7 +210,7 @@ export default function TontineDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
