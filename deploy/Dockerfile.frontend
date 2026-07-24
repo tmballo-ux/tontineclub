@@ -1,0 +1,38 @@
+# ============================================
+# TontineClub Web — Production Dockerfile
+# Build statique Expo (expo export -p web) servi par "serve"
+# ============================================
+FROM node:20-slim AS builder
+
+WORKDIR /app
+
+# IMPORTANT: doit etre fourni au moment du build (docker build --build-arg),
+# Expo injecte les variables EXPO_PUBLIC_* dans le bundle JS a la compilation,
+# pas au runtime du conteneur.
+ARG EXPO_PUBLIC_BACKEND_URL
+ENV EXPO_PUBLIC_BACKEND_URL=${EXPO_PUBLIC_BACKEND_URL}
+
+COPY frontend/package.json frontend/yarn.lock ./
+RUN yarn install --frozen-lockfile
+
+COPY frontend/ .
+RUN yarn build:web
+
+# ============================================
+FROM node:20-slim
+
+RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -s /sbin/nologin appuser
+RUN npm install -g serve@14
+
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:3000/ || exit 1
+
+EXPOSE 3000
+
+CMD ["serve", "-s", "dist", "-l", "3000"]

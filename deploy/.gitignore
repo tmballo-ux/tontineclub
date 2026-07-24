@@ -1,4 +1,5 @@
 # Secrets
+.env
 .env.production
 *.pem
 *.key

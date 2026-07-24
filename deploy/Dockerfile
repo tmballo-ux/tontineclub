@@ -35,16 +35,16 @@ USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8001/api/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Expose port
-EXPOSE 8001
+EXPOSE 8000
 
 # Production server with Gunicorn + Uvicorn workers
 CMD ["gunicorn", "server:app", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--workers", "2", \
-     "--bind", "0.0.0.0:8001", \
+     "--bind", "0.0.0.0:8000", \
      "--timeout", "120", \
      "--keep-alive", "5", \
      "--access-logfile", "-", \
