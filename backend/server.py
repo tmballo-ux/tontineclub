@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 import os
 import logging
 from pathlib import Path
@@ -1950,8 +1951,14 @@ async def startup_db_client():
                     "role": "admin",
                     "created_at": datetime.utcnow()
                 }
-                await db.users.insert_one(admin_user)
-                logger.info(f"Admin user created: {admin_email}")
+                try:
+                    await db.users.insert_one(admin_user)
+                    logger.info(f"Admin user created: {admin_email}")
+                except DuplicateKeyError:
+                    # Normal en production multi-workers (Gunicorn) : un autre
+                    # worker a cree le compte entre notre find_one et notre
+                    # insert_one. Rien a faire, le compte existe deja.
+                    logger.info(f"Admin user already created by another worker: {admin_email}")
             else:
                 # Ensure admin has role=admin
                 if existing_admin.get("role") != "admin":
