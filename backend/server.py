@@ -47,18 +47,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 import os as _os
 
-if _os.path.exists("/app/backend/playstore_assets"):
-    app.mount("/api/assets", StaticFiles(directory="/app/backend/playstore_assets"), name="playstore_assets")
+if (ROOT_DIR / "playstore_assets").exists():
+    app.mount("/api/assets", StaticFiles(directory=str(ROOT_DIR / "playstore_assets")), name="playstore_assets")
 
 # Admin static files - served under /api prefix so Kubernetes routes to backend
-if _os.path.exists("/app/backend/admin_static"):
-    app.mount("/api/admin-static", StaticFiles(directory="/app/backend/admin_static"), name="admin_static")
+if (ROOT_DIR / "admin_static").exists():
+    app.mount("/api/admin-static", StaticFiles(directory=str(ROOT_DIR / "admin_static")), name="admin_static")
 
 # Admin page route (under /api so it reaches the backend through ingress)
 @app.get("/api/admin-panel", response_class=HTMLResponse)
 @app.get("/api/admin-panel/", response_class=HTMLResponse)
 async def admin_page():
-    admin_html = Path("/app/backend/admin_static/index.html")
+    admin_html = ROOT_DIR / "admin_static" / "index.html"
     if admin_html.exists():
         content = admin_html.read_text()
         # Fix static file paths to use /api/admin-static
